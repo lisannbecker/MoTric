@@ -1,3 +1,15 @@
+0_LED_Backup/results
+1_LED_Backup_Kitti_Original_Params/results
+2_LED_Kitti_Dynamic_Params/results
+
+0_LED_Backup/data
+1_LED_Backup_Kitti_Original_Params/data
+2_LED_Kitti_Dynamic_Params/data
+
+KITTI_odometry
+Archive/Kitti_2D_LED_20epochs
+XTrainLEDKitti.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

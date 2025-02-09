@@ -1,0 +1,3 @@
+[submodule "SplaTAM"]
+	path = SplaTAM
+	url = https://github.com/spla-tam/SplaTAM.git
