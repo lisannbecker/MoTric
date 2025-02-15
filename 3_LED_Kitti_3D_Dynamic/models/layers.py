@@ -50,6 +50,11 @@ class ConcatSquashLinear(Module):
 		# if x.dim() == 3:
 		#     gate = gate.unsqueeze(1)
 		#     bias = bias.unsqueeze(1)
+
+		# print(self._layer(x).size())
+		# print(gate.size())
+		# print(bias.size())
+
 		ret = self._layer(x) * gate + bias
 		return ret
 	
@@ -111,9 +116,11 @@ class MLP(nn.Module):
 
 
 class social_transformer(nn.Module):
-	def __init__(self, past_len):
+	def __init__(self, past_len, d_h): #only issue, incorrect past_len = setting this to 8 fixes it
+		# print(past_len)
+		# exit()
 		super(social_transformer, self).__init__()
-		self.encode_past = nn.Linear(past_len*6, 256, bias=False)
+		self.encode_past = nn.Linear(past_len*d_h, 256, bias=False) #likely the problem
 		self.layer = nn.TransformerEncoderLayer(d_model=256, nhead=2, dim_feedforward=256)
 		self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=2)
 
@@ -131,9 +138,9 @@ class social_transformer(nn.Module):
 
 
 class st_encoder(nn.Module):
-	def __init__(self):
+	def __init__(self, d_h):
 		super().__init__()
-		channel_in = 6
+		channel_in = d_h #6 for 2D, 9 for 3D
 		channel_out = 32
 		dim_kernel = 3
 		self.dim_embedding_key = 256

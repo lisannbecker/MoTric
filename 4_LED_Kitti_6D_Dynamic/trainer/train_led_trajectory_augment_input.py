@@ -2,6 +2,8 @@ import sys
 import os
 import time
 import torch
+import torch.nn.functional as F
+
 import random
 import numpy as np
 import torch.nn as nn
@@ -15,7 +17,7 @@ from data.dataloader_nba import NBADataset, seq_collate
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) #LoaderKitti is two levels up
-from LoaderKitti import KITTIDatasetLeapfrog2D, seq_collate_kitti
+from LoaderKitti import KITTIDatasetLeapfrog2D, KITTIDatasetLeapfrog3D, KITTIDatasetLeapfrog6D, seq_collate_kitti
 
 
 from models.model_led_initializer import LEDInitializer as InitializationModel
@@ -39,63 +41,53 @@ class Trainer:
 		
 		# ------------------------- prepare train/test data loader -------------------------
 
-		if self.cfg.dataset.lower() == 'kitti':
-			print("KITTI dataset (1 agent).")
-			train_dset = KITTIDatasetLeapfrog2D(
-				input_size=self.cfg.past_frames,
-				preds_size=self.cfg.future_frames,
-				training=True
-			)
-			self.train_loader = DataLoader(
-				train_dset,
-				batch_size=self.cfg.train_batch_size,
-				shuffle=True,
-				num_workers=4,
-				collate_fn=seq_collate_kitti,
-				pin_memory=True
-			)
-			test_dset = KITTIDatasetLeapfrog2D(
-				input_size=self.cfg.past_frames,
-				preds_size=self.cfg.future_frames,
-				training=False
-			)
-			self.test_loader = DataLoader(
-				test_dset,
-				batch_size=self.cfg.test_batch_size,
-				shuffle=False,
-				num_workers=4,
-				collate_fn=seq_collate_kitti,
-				pin_memory=True
-			)
-
-		elif self.cfg.dataset.lower() == 'nba':
+		if self.cfg.dataset.lower() == 'nba':
 			print("NBA dataset (11 agents).")
-			train_dset = NBADataset(
-				obs_len=self.cfg.past_frames,
-				pred_len=self.cfg.future_frames,
-				training=True
-			)
-			self.train_loader = DataLoader(
-				train_dset,
-				batch_size=self.cfg.train_batch_size,
-				shuffle=True,
-				num_workers=4,
-				collate_fn=seq_collate,
-				pin_memory=True
-			)
-			test_dset = NBADataset(
-				obs_len=self.cfg.past_frames,
-				pred_len=self.cfg.future_frames,
-				training=False
-			)
-			self.test_loader = DataLoader(
-				test_dset,
-				batch_size=self.cfg.test_batch_size,
-				shuffle=False,
-				num_workers=4,
-				collate_fn=seq_collate,
-				pin_memory=True
-			)
+			dataloader_class = NBADataset
+			collate_fn = seq_collate
+		elif self.cfg.dataset.lower() == 'kitti':
+			if self.cfg.dimensions == 2:
+				print('[INFO] Loading 2D Translation Data')
+				dataloader_class = KITTIDatasetLeapfrog2D 
+			elif self.cfg.dimensions == 3:
+				print('[INFO] Loading 3D Translation Data')
+				dataloader_class = KITTIDatasetLeapfrog3D
+			elif self.cfg.dimensions == 6:
+				print('[INFO] Loading 6D Translation and Rotation (Lie Algebra) Data')
+				dataloader_class = KITTIDatasetLeapfrog6D 
+
+			collate_fn = seq_collate_kitti
+			print("KITTI dataset (1 agent).")
+
+
+		train_dset = dataloader_class(
+			input_size=self.cfg.past_frames,
+			preds_size=self.cfg.future_frames,
+			training=True
+		)
+		self.train_loader = DataLoader(
+			train_dset,
+			batch_size=self.cfg.train_batch_size,
+			shuffle=True,
+			num_workers=4,
+			collate_fn=collate_fn,
+			pin_memory=True
+		)
+
+		test_dset = dataloader_class(
+			input_size=self.cfg.past_frames,
+			preds_size=self.cfg.future_frames,
+			training=False
+		)
+		self.test_loader = DataLoader(
+			test_dset,
+			batch_size=self.cfg.test_batch_size,
+			shuffle=False,
+			num_workers=4,
+			collate_fn=collate_fn,
+			pin_memory=True
+		)
+
 
 		if self.cfg.future_frames < 20:
 			print(f"[Warning] Only {self.cfg.future_frames} future timesteps available, "
@@ -136,7 +128,8 @@ class Trainer:
 
 
 		# ------------------------- define models -------------------------
-		self.model = CoreDenoisingModel(t_h=self.cfg.past_frames).cuda()
+		self.model = CoreDenoisingModel(t_h=self.cfg.past_frames,d_f=self.cfg.dimensions).cuda()
+
 
 		if self.cfg.past_frames == 10 and self.cfg.future_frames == 20 and self.cfg.dataset == 'nba':
 			# load pretrained models 
@@ -144,11 +137,11 @@ class Trainer:
 			model_cp = torch.load(self.cfg.pretrained_core_denoising_model, map_location='cpu') #LB expects 60 dimensional input (6 x 10 past poses)
 			self.model.load_state_dict(model_cp['model_dict'])
 
-			self.model_initializer = InitializationModel(t_h=10, d_h=6, t_f=self.cfg.future_frames, d_f=2, k_pred=self.cfg.future_frames).cuda()
+			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=self.cfg.dimensions*3, t_f=self.cfg.future_frames, d_f=self.cfg.dimensions, k_pred=self.cfg.k_preds).cuda()
 		
 		else:
 			print('[INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)\n')
-			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=6, t_f=self.cfg.future_frames, d_f=2, k_pred=self.cfg.future_frames).cuda()
+			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=self.cfg.dimensions*3, t_f=self.cfg.future_frames, d_f=self.cfg.dimensions, k_pred=self.cfg.k_preds).cuda()
 
 		self.opt = torch.optim.AdamW(self.model_initializer.parameters(), lr=config.learning_rate)
 		self.scheduler_model = torch.optim.lr_scheduler.StepLR(self.opt, step_size=self.cfg.decay_step, gamma=self.cfg.decay_gamma)
@@ -203,6 +196,7 @@ class Trainer:
 		return betas
 
 
+	### Train denoising network / noise estimation
 	def extract(self, input, t, x):
 		shape = x.shape
 		out = torch.gather(input, 0, t.to(input.device))
@@ -210,6 +204,9 @@ class Trainer:
 		return out.reshape(*reshape)
 
 	def noise_estimation_loss(self, x, y_0, mask):
+		"""
+		Estimate how much noise has been added during the forward diffusion
+		"""
 		batch_size = x.shape[0]
 		# Select a random step for each example
 		t = torch.randint(0, self.n_steps, size=(batch_size // 2 + 1,)).to(x.device)
@@ -227,7 +224,7 @@ class Trainer:
 		return (e - output).square().mean()
 
 
-
+	### Reverse diffusion process
 	def p_sample(self, x, mask, cur_y, t):
 		if t==0:
 			z = torch.zeros_like(cur_y).to(x.device)
@@ -265,8 +262,6 @@ class Trainer:
 		sigma_t = self.extract(self.betas, t, cur_y).sqrt()
 		sample = mean + sigma_t * z * 0.00001
 		return (sample)
-
-
 
 	def p_sample_loop(self, x, mask, shape):
 		self.model.eval()
@@ -314,6 +309,17 @@ class Trainer:
 		return prediction_total
 
 
+	def geodesic_loss(R_pred, R_gt):
+		"""
+		Rotation loss - compute the geodesic loss between two batches of rotation matrices
+		R_pred, R_gt: (B, 3, 3)
+		"""
+		R_diff = torch.matmul(R_pred.transpose(-2, -1), R_gt)
+		trace = R_diff[:, 0, 0] + R_diff[:, 1, 1] + R_diff[:, 2, 2]
+		# Clamp for numerical stability. << this is example code
+		theta = torch.acos(torch.clamp((trace - 1) / 2, -1 + 1e-6, 1 - 1e-6))
+		return theta.mean()
+
 
 	def fit(self):
 		# Training loop
@@ -323,7 +329,8 @@ class Trainer:
 				time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), 
 				epoch, loss_total, loss_distance, loss_uncertainty), self.log)
 			
-			if (epoch + 1) % self.cfg.test_interval == 0:
+
+			if (epoch + 1) % self.cfg.test_interval == 0: #TODO have a look here
 				performance, samples = self._test_single_epoch()
 				for time_i in range(4):
 					print_log('--ADE({}s): {:.4f}\t--FDE({}s): {:.4f}'.format(
@@ -332,6 +339,7 @@ class Trainer:
 				cp_path = self.cfg.model_path % (epoch + 1)
 				model_cp = {'model_initializer_dict': self.model_initializer.state_dict()}
 				torch.save(model_cp, cp_path)
+
 			self.scheduler_model.step()
 
 
@@ -354,64 +362,154 @@ class Trainer:
 			traj_mask[i*num_agents:(i+1)*num_agents, i*num_agents:(i+1)*num_agents] = 1.
 
 		# Get last observed pose (for each agent) as initial position
-		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:] # [B, num_agents, 1, 2]
+		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:] # [B, num_agents, 1, 2] or 3D: [B, num_agents, 1, 3]
 
 		# augment input: absolute position, relative position, velocity
 		if self.cfg.dataset == 'kitti':
-			past_traj_abs = (data['pre_motion_3D'].cuda() / self.traj_scale).contiguous().view(-1, self.cfg.past_frames, 2) #LB subtracting mean from absolute positions is not informative for kitti dataset
+			past_traj_abs = (data['pre_motion_3D'].cuda() / self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) #LB subtracting mean from absolute positions is not informative for kitti dataset
 		elif self.cfg.dataset == 'nba':
-			past_traj_abs = ((data['pre_motion_3D'].cuda() - self.traj_mean)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, 2) 
-		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, 2)
+			past_traj_abs = ((data['pre_motion_3D'].cuda() - self.traj_mean)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) 
+		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions)
 		past_traj_vel = torch.cat((past_traj_rel[:, 1:] - past_traj_rel[:, :-1], torch.zeros_like(past_traj_rel[:, -1:])), dim=1)
 		past_traj = torch.cat((past_traj_abs, past_traj_rel, past_traj_vel), dim=-1)
 
-		fut_traj = ((data['fut_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.future_frames, 2)
+		fut_traj = ((data['fut_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.future_frames, self.cfg.dimensions)
 		#print('fut_traj: ', fut_traj.size())
 		return batch_size, traj_mask, past_traj, fut_traj
 
+
+	def so3_to_SO3(self,w): # [...,3] added from Ma PoseNet paper
+		wx = self.skew_symmetric(w)
+		theta = w.norm(dim=-1)[...,None,None]
+		I = torch.eye(3,device=w.device,dtype=torch.float32)
+		A = self.taylor_A(theta)
+		B = self.taylor_B(theta)
+		R = I+A*wx+B*wx@wx
+		return R
 
 	def _train_single_epoch(self, epoch):
 		
 		self.model.train()
 		self.model_initializer.train()
 		loss_total, loss_dt, loss_dc, count = 0, 0, 0, 0
+		#LB 3D addition to reshape tensors 
 		
 		for data in self.train_loader:
 			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
 
-			# print(past_traj.size()) # [32, 8, 6] < 8 timesteps, as expected
+			# print('traj_mask:', traj_mask.size()) # [32, 8, 6] < 8 timesteps, as expected
+			# print('past_traj:', past_traj.size()) # [32, 8, 6] < 8 timesteps, as expected
+			# print('fut_traj:', fut_traj.size()) # [32, 8, 6] < GT poses for future_frames timesteps
+
+			# LED initializer outputs (original)
 			sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
 			# print("sample_prediction shape:", sample_prediction.shape)
 			# print("mean_estimation shape:", mean_estimation.shape)
 			# print("variance_estimation shape:", variance_estimation.shape)
 			
+
+			# Reparameterisation with uncertainty (original)
 			sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
 			loc = sample_prediction + mean_estimation[:, None]
-
-			generated_y = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #failure point
-			# print(generated_y.size())
-
-			#squared distances / Euclidian, equal weight for all timesteps
-			loss_dist = (	(generated_y - fut_traj.unsqueeze(dim=1)).norm(p=2, dim=-1) 
-								* 
-							 self.temporal_reweight
-						).mean(dim=-1).min(dim=1)[0].mean()
-			loss_uncertainty = (torch.exp(-variance_estimation)
-		       						*
-								(generated_y - fut_traj.unsqueeze(dim=1)).norm(p=2, dim=-1).mean(dim=(1, 2)) 
-									+ 
-								variance_estimation
-								).mean()
+			# print('sample_prediction:', sample_prediction.size())
+			# print('loc:', loc.size())
 			
-			loss = loss_dist*50 + loss_uncertainty
+
+			# Generate K alternative future trajectories - multi-modal
+			k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #(B, K, T, 6)
+			#generated_y = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) 
+
+			
+			# print('Predictions batch:', generated_y.size())
+			# print('GT batch:', fut_traj.size())
+
+			# print('Prediction 0 shape:', generated_y[0].size())
+			# print('GT 0 shape:', fut_traj[0].size())
+
+			# print('Prediction:', generated_y[0])
+			# print('GT:', fut_traj[0])
+
+
+			# For loss, unsqueeze the ground truth to have predictions dimension
+			fut_traj_wpreds = fut_traj.unsqueeze(dim=1)
+
+			# Split into translation and rot
+			pred_trans = k_alternative_preds[..., :3]    # (B, K, T, 3)
+			pred_rot_lie = k_alternative_preds[..., 3:]    # (B, K, T, 3)
+			gt_trans = fut_traj_wpreds[..., :3]      # (B, 1, T, 3)
+			gt_rot_lie = fut_traj_wpreds[..., 3:]      # (B, 1, T, 3)
+
+			### (1) TRANSLATION LOSS
+			# L2 Euclidian distance - squared distances, equal weight for timesteps
+			trans_diff = pred_trans-gt_trans # (B, K, T, 3)
+			trans_error = trans_diff.norm(p=2, dim=-1) # (B, K, T)
+
+			loss_trans = (trans_error * self.temporal_reweight).mean(dim=-1)	# (B, K) loss for all k preds
+			
+			### (2) ROTATION LOSS (Geodesic)
+			#(original) squared distances / Euclidian, equal weight for all timesteps
+			# loss_dist = (	(generated_y - fut_traj_wpreds).norm(p=2, dim=-1) 
+			# 					* 
+			# 				 self.temporal_reweight
+			# 			).mean(dim=-1).min(dim=1)[0].mean()
+			# loss_uncertainty = (torch.exp(-variance_estimation)
+		    #    						*
+			# 					(generated_y - fut_traj_wpreds).norm(p=2, dim=-1).mean(dim=(1, 2)) 
+			# 						+ 
+			# 					variance_estimation
+			# 					).mean()
+			
+			# print(loss_dist)
+			# print(loss_uncertainty)
+
+			# convert Lie algebra rotations to classic 3x3 rotation matrices - need to flatten and unflatten into rot matrix
+			B, K, T, _ = pred_rot_lie.shape
+			pred_rot_flat = pred_rot_lie.view(-1, 3)          # (B*K*T, 3)
+			pred_R = self.so3_to_SO3(pred_rot_flat)         # (B*K*T, 3, 3)
+			pred_R = pred_R.view(B, K, T, 3, 3)
+
+			# Same for ground truth
+			gt_rot_lie_expanded = gt_rot_lie.expand(B, K, T, 3)  # (B, K, T, 3)
+			gt_rot_flat = gt_rot_lie_expanded.contiguous().view(-1, 3)  # (B*K*T, 3)
+			gt_R = self.so3_to_SO3(gt_rot_flat)              # (B*K*T, 3, 3)
+			gt_R = gt_R.view(B, K, T, 3, 3)
+
+			# Compute relative rotation: R_diff = R_pred^T * R_gt.
+			R_diff = torch.matmul(pred_R.transpose(-2, -1), gt_R)  # (B, K, T, 3, 3)
+
+			#get rotation error angle theta of rot 3x3 rot matrix
+			trace = R_diff[..., 0, 0] + R_diff[..., 1, 1] + R_diff[..., 2, 2]  # (B, K, T) trace of each individual relative rotation matrix
+			# Clamp to avoid numerical issues
+			angular_error_theta = torch.acos(torch.clamp((trace - 1) / 2, -1 + 1e-6, 1 - 1e-6))  # (B, K, T) take arccosine to get error angle cos(theta) = trace(R)-1 / 2 with clamping -1 + 1e-6, 1 - 1e-6
+			loss_rot = angular_error_theta.mean(dim=-1)  # average over time, so one loss per candidate K, shape (B, K)
+        
+
+			### (1+2) COMBINED DISTANCE LOSS (ROT AND TRANS)
+			combined_error = loss_trans + loss_rot  # (B, K) add translation and rotation error
+			loss_distance = combined_error.min(dim=1)[0].mean()  # some scalar << choose minimum error of K candidate futures
+
+
+			### (3) UNCERTAINTY LOSS (original)
+			loss_uncertainty = (
+				torch.exp(-variance_estimation) *
+				(k_alternative_preds - fut_traj_wpreds).norm(p=2, dim=-1).mean(dim=(1, 2)) + 
+				variance_estimation
+			).mean()
+			
+			
+			### TOTAL LOSS
+			loss = loss_distance * 50 + loss_uncertainty
+
 			loss_total += loss.item()
-			loss_dt += loss_dist.item()*50
+			loss_dt += loss_distance.item()*50
 			loss_dc += loss_uncertainty.item()
 
 			self.opt.zero_grad()
 			loss.backward()
+
 			torch.nn.utils.clip_grad_norm_(self.model_initializer.parameters(), 1.)
 			self.opt.step()
+
 			count += 1
 			if self.cfg.debug and count == 2:
 				break
@@ -419,7 +517,7 @@ class Trainer:
 		return loss_total/count, loss_dt/count, loss_dc/count
 
 
-	def _test_single_epoch(self):
+	def _test_single_epoch(self): #for 6D still want to evaluate the trajectory error on the translation part only TODO
 		performance = { 'FDE': [0, 0, 0, 0],
 						'ADE': [0, 0, 0, 0]}
 		samples = 0
@@ -439,7 +537,8 @@ class Trainer:
 				loc = sample_prediction + mean_estimation[:, None]
 			
 				pred_traj = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
-				#print('pred_traj: ', pred_traj.size())
+				print('pred_traj: ', pred_traj.size())
+				exit()
 
 
 				fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.future_frames, 1, 1)

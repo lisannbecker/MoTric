@@ -1,4 +1,4 @@
-
+import sys
 import os
 import time
 import torch
@@ -14,6 +14,10 @@ from torch.utils.data import DataLoader
 from data.dataloader_nba import NBADataset, seq_collate
 
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) #LoaderKitti is two levels up
+from LoaderKitti import KITTIDatasetLeapfrog2D, KITTIDatasetLeapfrog3D, seq_collate_kitti
+
+
 from models.model_led_initializer import LEDInitializer as InitializationModel
 from models.model_diffusion import TransformerDenoisingModel as CoreDenoisingModel
 
@@ -26,44 +30,73 @@ class Trainer:
 		if torch.cuda.is_available(): torch.cuda.set_device(config.gpu)
 		self.device = torch.device('cuda') if config.cuda else torch.device('cpu')
 		self.cfg = Config(config.cfg, config.info)
+		self.cfg.dataset = config.dataset #use kitti dataset if specified in command line
+
+		print("\nConfiguration:")
+		for key, value in self.cfg.yml_dict.items():
+			print(f"{key}: {value}")
+		print()
 		
 		# ------------------------- prepare train/test data loader -------------------------
-		train_dset = NBADataset(
-			obs_len=self.cfg.past_frames,
-			pred_len=self.cfg.future_frames,
-			training=True)
 
+		if self.cfg.dataset.lower() == 'nba':
+			print("NBA dataset (11 agents).")
+			dataloader_class = NBADataset
+			collate_fn = seq_collate
+		elif self.cfg.dataset.lower() == 'kitti':
+			dataloader_class = KITTIDatasetLeapfrog3D if self.cfg.dimensions == 3 else KITTIDatasetLeapfrog2D
+			collate_fn = seq_collate_kitti
+			print("KITTI dataset (1 agent).")
+
+
+		train_dset = dataloader_class(
+			input_size=self.cfg.past_frames,
+			preds_size=self.cfg.future_frames,
+			training=True
+		)
 		self.train_loader = DataLoader(
 			train_dset,
 			batch_size=self.cfg.train_batch_size,
 			shuffle=True,
 			num_workers=4,
-			collate_fn=seq_collate,
-			pin_memory=True)
-		
-		for batch in self.train_loader:
-			print(batch.keys())
-			print("Batch pre-motion shape:", batch['pre_motion_3D'].shape)  
-			print("Batch future motion shape:", batch['fut_motion_3D'].shape)  
-			print("Batch pre-motion shape:", batch['pre_motion_mask'].shape)  # [batch_size, 1, past_poses, 2]
-			print("Batch future motion shape:", batch['fut_motion_mask'].shape)  # [batch_size, 1, future_poses, 2]
-			print("traj_scale:", batch['traj_scale'])
-			print("pred_mask:", batch['pred_mask'])
-			print("seq:", batch['seq'])
-			exit()
-		
-		test_dset = NBADataset(
-			obs_len=self.cfg.past_frames,
-			pred_len=self.cfg.future_frames,
-			training=False)
+			collate_fn=collate_fn,
+			pin_memory=True
+		)
 
+		test_dset = dataloader_class(
+			input_size=self.cfg.past_frames,
+			preds_size=self.cfg.future_frames,
+			training=False
+		)
 		self.test_loader = DataLoader(
 			test_dset,
 			batch_size=self.cfg.test_batch_size,
 			shuffle=False,
 			num_workers=4,
-			collate_fn=seq_collate,
-			pin_memory=True)
+			collate_fn=collate_fn,
+			pin_memory=True
+		)
+
+
+		if self.cfg.future_frames < 20:
+			print(f"[Warning] Only {self.cfg.future_frames} future timesteps available, "
+				f"ADE/FDE will be computed for up to {self.cfg.future_frames // 5} seconds instead of the full 4 seconds.")
+
+		
+		if self.cfg.dataset.lower()=='kitti':
+			# for batch in self.train_loader:
+			# 	print(batch.keys())
+			# 	print("Batch pre-motion shape:", batch['pre_motion_3D'].shape)  
+			# 	print("Batch future motion shape:", batch['fut_motion_3D'].shape)  
+			# 	print("Batch pre-motion mask shape:", batch['pre_motion_mask'].shape)  # [batch_size, 1, past_poses, 2]
+			# 	print("Batch future motion mask shape:", batch['fut_motion_mask'].shape)  # [batch_size, 1, future_poses, 2]
+			# 	print("traj_scale:", batch['traj_scale'])
+			# 	print("pred_mask:", batch['pred_mask'])
+			# 	print("seq:", batch['seq'], '\n')
+			# 	break
+			print('[INFO] Kitti dataset - skip subtracting mean from absolute positions.')
+			
+		
 		
 		# data normalization parameters
 		self.traj_mean = torch.FloatTensor(self.cfg.traj_mean).cuda().unsqueeze(0).unsqueeze(0).unsqueeze(0)
@@ -84,12 +117,20 @@ class Trainer:
 
 
 		# ------------------------- define models -------------------------
-		self.model = CoreDenoisingModel().cuda()
-		# load pretrained models
-		model_cp = torch.load(self.cfg.pretrained_core_denoising_model, map_location='cpu')
-		self.model.load_state_dict(model_cp['model_dict'])
+		self.model = CoreDenoisingModel(t_h=self.cfg.past_frames,d_f=self.cfg.dimensions).cuda()
 
-		self.model_initializer = InitializationModel(t_h=10, d_h=6, t_f=20, d_f=2, k_pred=20).cuda()
+
+		if self.cfg.past_frames == 10 and self.cfg.future_frames == 20 and self.cfg.dataset == 'nba':
+			# load pretrained models 
+			print('[INFO] Loading pretrained models... (NBA with standard frame configs)\n')
+			model_cp = torch.load(self.cfg.pretrained_core_denoising_model, map_location='cpu') #LB expects 60 dimensional input (6 x 10 past poses)
+			self.model.load_state_dict(model_cp['model_dict'])
+
+			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=self.cfg.dimensions*3, t_f=self.cfg.future_frames, d_f=self.cfg.dimensions, k_pred=self.cfg.k_preds).cuda()
+		
+		else:
+			print('[INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)\n')
+			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=self.cfg.dimensions*3, t_f=self.cfg.future_frames, d_f=self.cfg.dimensions, k_pred=self.cfg.k_preds).cuda()
 
 		self.opt = torch.optim.AdamW(self.model_initializer.parameters(), lr=config.learning_rate)
 		self.scheduler_model = torch.optim.lr_scheduler.StepLR(self.opt, step_size=self.cfg.decay_step, gamma=self.cfg.decay_gamma)
@@ -100,7 +141,10 @@ class Trainer:
 		self.print_model_param(self.model_initializer, name='Initialization Model')
 
 		# temporal reweight in the loss, it is not necessary.
-		self.temporal_reweight = torch.FloatTensor([21 - i for i in range(1, 21)]).cuda().unsqueeze(0).unsqueeze(0) / 10
+		#self.temporal_reweight = torch.FloatTensor([21 - i for i in range(1, 21)]).cuda().unsqueeze(0).unsqueeze(0) / 10
+		self.temporal_reweight = torch.FloatTensor([self.cfg.future_frames - i for i in range(1, self.cfg.future_frames + 1)]).cuda().unsqueeze(0).unsqueeze(0) / 10
+
+
 
 
 	def print_model_param(self, model: nn.Module, name: str = 'Model') -> None:
@@ -164,8 +208,6 @@ class Trainer:
 		# batch_size, 20, 2
 		return (e - output).square().mean()
 
-
-
 	def p_sample(self, x, mask, cur_y, t):
 		if t==0:
 			z = torch.zeros_like(cur_y).to(x.device)
@@ -204,12 +246,10 @@ class Trainer:
 		sample = mean + sigma_t * z * 0.00001
 		return (sample)
 
-
-
 	def p_sample_loop(self, x, mask, shape):
 		self.model.eval()
 		prediction_total = torch.Tensor().cuda()
-		for _ in range(20):
+		for _ in range(self.cfg.future_frames):
 			cur_y = torch.randn(shape).to(x.device)
 			for i in reversed(range(self.n_steps)):
 				cur_y = self.p_sample(x, mask, cur_y, i)
@@ -229,22 +269,27 @@ class Trainer:
 		'''
 		Batch operation to accelerate the denoising process.
 
-		x: [11, 10, 6]
-		mask: [11, 11]
+		x: [Batch size, past steps, feature dimension per timestep = 6 (absolute position, relative position, velocity - all 2D)]
+		mask: [Batch size, batch size]
+		loc: [Batch size, number of predictions per timestep k_preds = alternative futures, timesteps into the future, dimensionality - x and y]
 		cur_y: [11, 10, 20, 2]
 		'''
+		# print(f"Past Trajectory Shape (x): {x.size()}")  
+		# print(f"Trajectory Mask Shape: {mask.size()}")  
+		# print(f"Generated Location Shape (loc): {loc.size()}")  
+
 		prediction_total = torch.Tensor().cuda()
 		cur_y = loc[:, :10]
 		for i in reversed(range(NUM_Tau)):
 			cur_y = self.p_sample_accelerate(x, mask, cur_y, i)
+			
 		cur_y_ = loc[:, 10:]
 		for i in reversed(range(NUM_Tau)):
 			cur_y_ = self.p_sample_accelerate(x, mask, cur_y_, i)
 		# shape: B=b*n, K=10, T, 2
 		prediction_total = torch.cat((cur_y_, cur_y), dim=1)
+
 		return prediction_total
-
-
 
 	def fit(self):
 		# Training loop
@@ -254,7 +299,8 @@ class Trainer:
 				time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), 
 				epoch, loss_total, loss_distance, loss_uncertainty), self.log)
 			
-			if (epoch + 1) % self.cfg.test_interval == 0:
+
+			if (epoch + 1) % self.cfg.test_interval == 0: #TODO have a look here
 				performance, samples = self._test_single_epoch()
 				for time_i in range(4):
 					print_log('--ADE({}s): {:.4f}\t--FDE({}s): {:.4f}'.format(
@@ -263,10 +309,11 @@ class Trainer:
 				cp_path = self.cfg.model_path % (epoch + 1)
 				model_cp = {'model_initializer_dict': self.model_initializer.state_dict()}
 				torch.save(model_cp, cp_path)
+
 			self.scheduler_model.step()
 
 
-	def data_preprocess(self, data):
+	def data_preprocess(self, data): #Updated to handle any number of agents
 		"""
 			pre_motion_3D: torch.Size([32, 11, 10, 2]), [batch_size, num_agent, past_frame, dimension]
 			fut_motion_3D: torch.Size([32, 11, 20, 2])
@@ -277,19 +324,27 @@ class Trainer:
 			seq: nba
 		"""
 		batch_size = data['pre_motion_3D'].shape[0]
+		num_agents = data['pre_motion_3D'].shape[1]
 
-		traj_mask = torch.zeros(batch_size*11, batch_size*11).cuda()
+		#Create trajectory mask [batch_size * num_agents, batch_size * num_agents]
+		traj_mask = torch.zeros(batch_size*num_agents, batch_size*num_agents).cuda()
 		for i in range(batch_size):
-			traj_mask[i*11:(i+1)*11, i*11:(i+1)*11] = 1.
+			traj_mask[i*num_agents:(i+1)*num_agents, i*num_agents:(i+1)*num_agents] = 1.
 
-		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:]
+		# Get last observed pose (for each agent) as initial position
+		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:] # [B, num_agents, 1, 2] or 3D: [B, num_agents, 1, 3]
+
 		# augment input: absolute position, relative position, velocity
-		past_traj_abs = ((data['pre_motion_3D'].cuda() - self.traj_mean)/self.traj_scale).contiguous().view(-1, 10, 2)
-		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, 10, 2)
+		if self.cfg.dataset == 'kitti':
+			past_traj_abs = (data['pre_motion_3D'].cuda() / self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) #LB subtracting mean from absolute positions is not informative for kitti dataset
+		elif self.cfg.dataset == 'nba':
+			past_traj_abs = ((data['pre_motion_3D'].cuda() - self.traj_mean)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) 
+		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions)
 		past_traj_vel = torch.cat((past_traj_rel[:, 1:] - past_traj_rel[:, :-1], torch.zeros_like(past_traj_rel[:, -1:])), dim=1)
 		past_traj = torch.cat((past_traj_abs, past_traj_rel, past_traj_vel), dim=-1)
 
-		fut_traj = ((data['fut_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, 20, 2)
+		fut_traj = ((data['fut_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.future_frames, self.cfg.dimensions)
+		#print('fut_traj: ', fut_traj.size())
 		return batch_size, traj_mask, past_traj, fut_traj
 
 
@@ -298,16 +353,40 @@ class Trainer:
 		self.model.train()
 		self.model_initializer.train()
 		loss_total, loss_dt, loss_dc, count = 0, 0, 0, 0
+		#LB 3D addition to reshape tensors 
 		
 		for data in self.train_loader:
 			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
 
+			# print('traj_mask:', traj_mask.size()) # [32, 8, 6] < 8 timesteps, as expected
+			# print('past_traj:', past_traj.size()) # [32, 8, 6] < 8 timesteps, as expected
+			# print('fut_traj:', fut_traj.size()) # [32, 8, 6] < GT poses for future_frames timesteps
+
+
 			sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
+			# print("sample_prediction shape:", sample_prediction.shape)
+			# print("mean_estimation shape:", mean_estimation.shape)
+			# print("variance_estimation shape:", variance_estimation.shape)
+			
 			sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
 			loc = sample_prediction + mean_estimation[:, None]
+			# print('sample_prediction:', sample_prediction.size())
+			# print('loc:', loc.size())
 			
-			generated_y = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
+			generated_y = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #k_preds alternative future poses for future_frames timesteps
 			
+			# print('Predictions batch:', generated_y.size())
+			# print('GT batch:', fut_traj.size())
+
+			# print('Prediction 0 shape:', generated_y[0].size())
+			# print('GT 0 shape:', fut_traj[0].size())
+
+			# print('Prediction:', generated_y[0])
+			# print('GT:', fut_traj[0])
+
+
+			
+			#squared distances / Euclidian, equal weight for all timesteps
 			loss_dist = (	(generated_y - fut_traj.unsqueeze(dim=1)).norm(p=2, dim=-1) 
 								* 
 							 self.temporal_reweight
@@ -319,6 +398,9 @@ class Trainer:
 								variance_estimation
 								).mean()
 			
+			# print(loss_dist)
+			# print(loss_uncertainty)
+			
 			loss = loss_dist*50 + loss_uncertainty
 			loss_total += loss.item()
 			loss_dt += loss_dist.item()*50
@@ -326,6 +408,8 @@ class Trainer:
 
 			self.opt.zero_grad()
 			loss.backward()
+
+
 			torch.nn.utils.clip_grad_norm_(self.model_initializer.parameters(), 1.)
 			self.opt.step()
 			count += 1
@@ -355,13 +439,26 @@ class Trainer:
 				loc = sample_prediction + mean_estimation[:, None]
 			
 				pred_traj = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
+				#print('pred_traj: ', pred_traj.size())
 
-				fut_traj = fut_traj.unsqueeze(1).repeat(1, 20, 1, 1)
+
+				fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.future_frames, 1, 1)
 				# b*n, K, T, 2
 				distances = torch.norm(fut_traj - pred_traj, dim=-1) * self.traj_scale
+				# print('distances: ', distances)
 				for time_i in range(1, 5):
-					ade = (distances[:, :, :5*time_i]).mean(dim=-1).min(dim=-1)[0].sum()
-					fde = (distances[:, :, 5*time_i-1]).min(dim=-1)[0].sum()
+					# ade = (distances[:, :, :5*time_i]).mean(dim=-1).min(dim=-1)[0].sum()
+					# fde = (distances[:, :, 5*time_i-1]).min(dim=-1)[0].sum()
+					max_index = min(5 * time_i - 1, distances.shape[2] - 1)  # Ensure index does not exceed the array size = future timesteps
+					"""
+					1s: 5 * 1 - 1 = 4 → Requires at least 5 timesteps.
+					2s: 5 * 2 - 1 = 9 → Requires at least 10 timesteps.
+					3s: 5 * 3 - 1 = 14 → Requires at least 15 timesteps.
+					4s: 5 * 4 - 1 = 19 → Requires at least 20 timesteps.
+					"""
+					ade = (distances[:, :, :max_index + 1]).mean(dim=-1).min(dim=-1)[0].sum()
+					fde = (distances[:, :, max_index]).min(dim=-1)[0].sum()
+
 					performance['ADE'][time_i-1] += ade.item()
 					performance['FDE'][time_i-1] += fde.item()
 				samples += distances.shape[0]
@@ -435,7 +532,7 @@ class Trainer:
 			
 				pred_traj = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
 
-				fut_traj = fut_traj.unsqueeze(1).repeat(1, 20, 1, 1)
+				fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.future_frames, 1, 1)
 				# b*n, K, T, 2
 				distances = torch.norm(fut_traj - pred_traj, dim=-1) * self.traj_scale
 				for time_i in range(1, 5):

@@ -41,6 +41,9 @@ traj_scale: 1
 pred_mask: None
 seq: kitti 
 
+
+[FYI] Average Euclidean distance between start and end pose (20 timesteps): tensor(10.5206) << estimate
+
 [Core Denoising Model] Trainable/Total: 6568720/6568720
 [Initialization Model] Trainable/Total: 4634721/4634721
 [2025-02-08 20:58:38] Epoch: 0		Loss: 11.180159	Loss Dist.: 9.641671	Loss Uncertainty: 1.538489

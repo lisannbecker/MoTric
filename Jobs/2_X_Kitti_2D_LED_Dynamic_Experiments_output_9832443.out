@@ -35,6 +35,9 @@ KITTI dataset (1 agent).
 [INFO] Kitti dataset - skip subtracting mean from absolute positions.
 [INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)
 
+[FYI] Average Euclidean distance between start and end pose (20 timesteps): tensor(10.5206) << estimate
+
+
 [Core Denoising Model] Trainable/Total: 6576400/6576400
 [Initialization Model] Trainable/Total: 5004233/5004233
 [2025-02-09 00:25:20] Epoch: 0		Loss: 63803.459646	Loss Dist.: 11.857949	Loss Uncertainty: 63791.603350

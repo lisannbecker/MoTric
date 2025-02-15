@@ -1,3 +1,6 @@
 [submodule "SplaTAM"]
 	path = SplaTAM
 	url = https://github.com/spla-tam/SplaTAM.git
+[submodule "SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth"]
+	path = SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth
+	url = https://github.com/JonathonLuiten/diff-gaussian-rasterization-w-depth.git

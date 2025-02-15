@@ -14,6 +14,7 @@ def parse_config():
 	
 	parser.add_argument("--info", type=str, default='', help='Name of the experiment. '
 															 'It will be used in file creation.')
+	parser.add_argument("--dataset", type=str, default='nba', help='Name of the dataset (nba / kitti).')
 	return parser.parse_args()
 
 

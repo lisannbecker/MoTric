@@ -19,11 +19,13 @@ class LEDInitializer(nn.Module):
 		self.input_dim = t_h * d_h
 		self.output_dim = t_f * d_f * k_pred
 		self.fut_len = t_f
+		self.d_f = d_f
 
-		self.social_encoder = social_transformer(t_h)
-		self.ego_var_encoder = st_encoder()
-		self.ego_mean_encoder = st_encoder()
-		self.ego_scale_encoder = st_encoder()
+		# print(t_h)
+		self.social_encoder = social_transformer(t_h, d_h) #d_h features per timestep - 6 for 2D, 9 for 3D
+		self.ego_var_encoder = st_encoder(d_h)
+		self.ego_mean_encoder = st_encoder(d_h)
+		self.ego_scale_encoder = st_encoder(d_h)
 
 		self.scale_encoder = MLP(1, 32, hid_feat=(4, 16), activation=nn.ReLU())
 
@@ -37,6 +39,8 @@ class LEDInitializer(nn.Module):
 		x: batch size, t_p, 6
 		'''
 		mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+		#print(x)
+		#exit()
 		social_embed = self.social_encoder(x, mask)
 		social_embed = social_embed.squeeze(1)
 		# B, 256
@@ -48,14 +52,14 @@ class LEDInitializer(nn.Module):
 
 		mean_total = torch.cat((ego_mean_embed, social_embed), dim=-1)
 		
-		guess_mean = self.mean_decoder(mean_total).contiguous().view(-1, self.fut_len, 2)
+		guess_mean = self.mean_decoder(mean_total).contiguous().view(-1, self.fut_len, self.d_f)
 
 		scale_total = torch.cat((ego_scale_embed, social_embed), dim=-1)
 		guess_scale = self.scale_decoder(scale_total)
 
 		guess_scale_feat = self.scale_encoder(guess_scale)
 		var_total = torch.cat((ego_var_embed, social_embed, guess_scale_feat), dim=-1)
-		guess_var = self.var_decoder(var_total).reshape(x.size(0), self.n, self.fut_len, 2)
+		guess_var = self.var_decoder(var_total).reshape(x.size(0), self.n, self.fut_len, self.d_f)
 
 		return guess_var, guess_mean, guess_scale
 
