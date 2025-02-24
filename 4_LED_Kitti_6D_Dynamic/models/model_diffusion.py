@@ -80,12 +80,15 @@ class TransformerDenoisingModel(Module):
 		self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=tf_layer)
 		self.concat3 = ConcatSquashLinear(2*context_dim,context_dim,context_dim+3)
 		self.concat4 = ConcatSquashLinear(context_dim,context_dim//2,context_dim+3)
+		if d_f in [2, 3]:
+			self.linear = ConcatSquashLinear(context_dim//2, d_f, context_dim+3)
 
 
-		#self.linear = ConcatSquashLinear(context_dim//2, d_f, context_dim+3)
-		# Two separate heads: one for translation (3D) and one for rotation (3D Lie algebra)
-		self.linear_trans = ConcatSquashLinear(context_dim // 2, 3, context_dim + 3)
-		self.linear_rot = ConcatSquashLinear(context_dim // 2, 3, context_dim + 3)
+		else:
+			#self.linear = ConcatSquashLinear(context_dim//2, d_f, context_dim+3)
+			# Two separate heads: one for translation (3D) and one for rotation (3D Lie algebra)
+			self.linear_trans = ConcatSquashLinear(context_dim // 2, 3, context_dim + 3)
+			self.linear_rot = ConcatSquashLinear(context_dim // 2, 3, context_dim + 3)
 
 
 	def forward(self, x, beta, context, mask):
@@ -107,13 +110,18 @@ class TransformerDenoisingModel(Module):
 		final_emb = self.pos_emb(final_emb)
 		
 		# Pass through transformer encoder
+		if self.cfg.dimensions in [2,3]:
+			trans = self.transformer_encoder(final_emb).permute(1,0,2)
+			trans = self.concat3(ctx_emb, trans)
+			trans = self.concat4(ctx_emb, trans)
+			return self.linear(ctx_emb, trans)
+
 		trans_emb = self.transformer_encoder(final_emb).permute(1,0,2)
 		trans_emb = self.concat3(ctx_emb, trans_emb)
 		trans_emb = self.concat4(ctx_emb, trans_emb)
 
 		pred_trans = self.linear_trans(ctx_emb, trans_emb) # (B, T, 3) translation
-		pred_rot = self.linear_trans(ctx_emb, trans_emb) # (B, T, 3) rotation (Lie algebra)
-
+		pred_rot = self.linear_rot(ctx_emb, trans_emb) # (B, T, 3) rotation (Lie algebra)
 		pred = torch.cat([pred_trans, pred_rot], dim=-1) # concatenate along pose dimension (last) # (B, T, 6)
 		return pred
 		#return self.linear(ctx_emb, trans)
@@ -132,7 +140,8 @@ class TransformerDenoisingModel(Module):
         Returns:
             pred: Generated predictions of shape (B, num_predictions, T, 6)
         """
-		batch_size, num_predictions, num_timesteps, _ = x.shape
+		
+		batch_size, num_predictions, num_timesteps, dims = x.shape
 		# print(x.size())
 
 		beta = beta.view(batch_size, 1, 1)          # (B, 1, 1)
@@ -163,8 +172,14 @@ class TransformerDenoisingModel(Module):
 		trans_emb = self.concat3.batch_generate(ctx_emb, trans_emb)
 		trans_emb = self.concat4.batch_generate(ctx_emb, trans_emb)
 
-		pred_trans = self.linear_trans.batch_generate(ctx_emb, trans_emb)
-		pred_rot = self.linear_rot.batch_generate(ctx_emb, trans_emb)
-		pred = torch.cat([pred_trans, pred_rot], dim=-1)
+
+		if dims in [2, 3]:
+			# For 2D or 3D, only predict translation.
+			pred = self.linear.batch_generate(ctx_emb, trans_emb)
+		else:  # self.cfg.dimensions == 6
+			pred_trans = self.linear_trans.batch_generate(ctx_emb, trans_emb)
+			pred_rot = self.linear_rot.batch_generate(ctx_emb, trans_emb)
+			pred = torch.cat([pred_trans, pred_rot], dim=-1)
+
 		return pred
 		#return self.linear.batch_generate(ctx_emb, trans)

@@ -78,6 +78,7 @@ class TransformerDenoisingModel(Module):
 		self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=tf_layer)
 		self.concat3 = ConcatSquashLinear(2*context_dim,context_dim,context_dim+3)
 		self.concat4 = ConcatSquashLinear(context_dim,context_dim//2,context_dim+3)
+
 		self.linear = ConcatSquashLinear(context_dim//2, d_f, context_dim+3)
 
 
@@ -94,6 +95,7 @@ class TransformerDenoisingModel(Module):
 		x = self.concat1(ctx_emb, x)
 		final_emb = x.permute(1,0,2)
 		final_emb = self.pos_emb(final_emb)
+		
 		
 		trans = self.transformer_encoder(final_emb).permute(1,0,2)
 		trans = self.concat3(ctx_emb, trans)

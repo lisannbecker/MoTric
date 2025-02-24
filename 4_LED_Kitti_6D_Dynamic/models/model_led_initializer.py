@@ -33,14 +33,16 @@ class LEDInitializer(nn.Module):
 		self.mean_decoder = MLP(256*2, t_f * d_f, hid_feat=(256, 128), activation=nn.ReLU())
 		self.scale_decoder = MLP(256*2, 1, hid_feat=(256, 128), activation=nn.ReLU())
 
+
 	
 	def forward(self, x, mask=None):
 		'''
 		x: batch size, t_p, 6
+		past trajectory = x
 		'''
+
 		mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-		#print(x)
-		#exit()
+
 		social_embed = self.social_encoder(x, mask)
 		social_embed = social_embed.squeeze(1)
 		# B, 256

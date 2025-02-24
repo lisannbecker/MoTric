@@ -17,7 +17,7 @@ from data.dataloader_nba import NBADataset, seq_collate
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) #LoaderKitti is two levels up
-from LoaderKitti import KITTIDatasetLeapfrog2D, KITTIDatasetLeapfrog3D, KITTIDatasetLeapfrog6D, seq_collate_kitti
+from LoaderKitti import KITTIDatasetLeapfrog, seq_collate_kitti
 
 
 from models.model_led_initializer import LEDInitializer as InitializationModel
@@ -42,28 +42,24 @@ class Trainer:
 		# ------------------------- prepare train/test data loader -------------------------
 
 		if self.cfg.dataset.lower() == 'nba':
-			print("NBA dataset (11 agents).")
+			print("[INFO] NBA dataset (11 agent]s).")
 			dataloader_class = NBADataset
 			collate_fn = seq_collate
 		elif self.cfg.dataset.lower() == 'kitti':
-			if self.cfg.dimensions == 2:
-				print('[INFO] Loading 2D Translation Data')
-				dataloader_class = KITTIDatasetLeapfrog2D 
-			elif self.cfg.dimensions == 3:
-				print('[INFO] Loading 3D Translation Data')
-				dataloader_class = KITTIDatasetLeapfrog3D
-			elif self.cfg.dimensions == 6:
-				print('[INFO] Loading 6D Translation and Rotation (Lie Algebra) Data')
-				dataloader_class = KITTIDatasetLeapfrog6D 
-
+			dataloader_class = KITTIDatasetLeapfrog
 			collate_fn = seq_collate_kitti
-			print("KITTI dataset (1 agent).")
+			print("[INFO] KITTI dataset (1 agent).")
 
 
 		train_dset = dataloader_class(
+			dims=self.cfg.dimensions,
 			input_size=self.cfg.past_frames,
 			preds_size=self.cfg.future_frames,
-			training=True
+			training=True,
+			relative=self.cfg.relative, 
+			normalised=self.cfg.normalised, 
+			train_ratio=0.85,
+			seed=42
 		)
 		self.train_loader = DataLoader(
 			train_dset,
@@ -75,9 +71,14 @@ class Trainer:
 		)
 
 		test_dset = dataloader_class(
+			dims=self.cfg.dimensions,
 			input_size=self.cfg.past_frames,
 			preds_size=self.cfg.future_frames,
-			training=False
+			training=False,
+			relative=self.cfg.relative, 
+			normalised=self.cfg.normalised, 
+			train_ratio=0.85,
+			seed=42
 		)
 		self.test_loader = DataLoader(
 			test_dset,
@@ -87,6 +88,26 @@ class Trainer:
 			collate_fn=collate_fn,
 			pin_memory=True
 		)
+		print('[INFO] Now using random trajectory shuffling.\n')
+		
+		### Stats about trajectories
+		if self.cfg.dimensions == 2:
+			print("Train dataset:")
+			self.print_some_stats(train_dset.fut_motion_3D, None, 2)
+			print("\nTest dataset:")
+			self.print_some_stats(test_dset.fut_motion_3D, None, 2)
+
+		elif self.cfg.dimensions == 3:
+			print("Train dataset:")
+			self.print_some_stats(train_dset.fut_motion_3D, None, 3)
+			print("\nTest dataset:")
+			self.print_some_stats(test_dset.fut_motion_3D, None, 3)
+		
+		elif self.cfg.dimensions == 6:
+			print("Train dataset:")
+			self.print_some_stats(train_dset.fut_motion_3D[..., :3], train_dset.fut_motion_3D[..., 3:], 3)
+			print("\nTest dataset:")
+			self.print_some_stats(test_dset.fut_motion_3D[..., :3], train_dset.fut_motion_3D[..., 3:], 3)
 
 
 		if self.cfg.future_frames < 20:
@@ -105,7 +126,7 @@ class Trainer:
 			# 	print("pred_mask:", batch['pred_mask'])
 			# 	print("seq:", batch['seq'], '\n')
 			# 	break
-			print('[INFO] Kitti dataset - skip subtracting mean from absolute positions.')
+			print('\n[INFO] Kitti dataset - skip subtracting mean from absolute positions.')
 			
 		
 		
@@ -141,6 +162,7 @@ class Trainer:
 		
 		else:
 			print('[INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)\n')
+			# print('Params for model_initialiser: ', self.cfg.past_frames, self.cfg.dimensions*3, self.cfg.future_frames, self.cfg.dimensions, self.cfg.k_preds)
 			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=self.cfg.dimensions*3, t_f=self.cfg.future_frames, d_f=self.cfg.dimensions, k_pred=self.cfg.k_preds).cuda()
 
 		self.opt = torch.optim.AdamW(self.model_initializer.parameters(), lr=config.learning_rate)
@@ -151,10 +173,12 @@ class Trainer:
 		self.print_model_param(self.model, name='Core Denoising Model')
 		self.print_model_param(self.model_initializer, name='Initialization Model')
 
+		# print(self.model)
+		#print(self.model_initializer)
+
 		# temporal reweight in the loss, it is not necessary.
 		#self.temporal_reweight = torch.FloatTensor([21 - i for i in range(1, 21)]).cuda().unsqueeze(0).unsqueeze(0) / 10
 		self.temporal_reweight = torch.FloatTensor([self.cfg.future_frames - i for i in range(1, self.cfg.future_frames + 1)]).cuda().unsqueeze(0).unsqueeze(0) / 10
-
 
 
 
@@ -166,7 +190,6 @@ class Trainer:
 		trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
 		print_log("[{}] Trainable/Total: {}/{}".format(name, trainable_num, total_num), self.log)
 		return None
-
 
 	def make_beta_schedule(self, schedule: str = 'linear', 
 			n_timesteps: int = 1000, 
@@ -309,33 +332,28 @@ class Trainer:
 		return prediction_total
 
 
-	def geodesic_loss(R_pred, R_gt):
-		"""
-		Rotation loss - compute the geodesic loss between two batches of rotation matrices
-		R_pred, R_gt: (B, 3, 3)
-		"""
-		R_diff = torch.matmul(R_pred.transpose(-2, -1), R_gt)
-		trace = R_diff[:, 0, 0] + R_diff[:, 1, 1] + R_diff[:, 2, 2]
-		# Clamp for numerical stability. << this is example code
-		theta = torch.acos(torch.clamp((trace - 1) / 2, -1 + 1e-6, 1 - 1e-6))
-		return theta.mean()
-
-
 	def fit(self):
 		# Training loop
 		for epoch in range(0, self.cfg.num_epochs):
-			loss_total, loss_distance, loss_uncertainty = self._train_single_epoch(epoch)
-			print_log('[{}] Epoch: {}\t\tLoss: {:.6f}\tLoss Dist.: {:.6f}\tLoss Uncertainty: {:.6f}'.format(
-				time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), 
-				epoch, loss_total, loss_distance, loss_uncertainty), self.log)
+			loss_total, loss_trans, loss_rot, loss_distance, loss_uncertainty = self._train_single_epoch(epoch)
+
+			if self.cfg.dimensions in [2,3]:
+				print_log('[{}] Epoch: {}\t\tLoss: {:.6f}\tLoss Translation.: {:.6f}\tLoss Uncertainty: {:.6f}'.format(
+					time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), 
+					epoch, loss_total, loss_distance, loss_uncertainty), self.log)
 			
+			elif self.cfg.dimensions == 6:
+				print_log('[{}] Epoch: {}\t\tLoss: {:.6f}\tLoss Translation.: {:.6f}\tLoss Rotation.: {:.6f}\tCombined Loss Dist.: {:.6f}\tLoss Uncertainty: {:.6f}'.format(
+					time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), 
+					epoch, loss_total, loss_trans, loss_rot, loss_distance, loss_uncertainty), self.log)
+
 
 			if (epoch + 1) % self.cfg.test_interval == 0: #TODO have a look here
-				performance, samples = self._test_single_epoch()
-				for time_i in range(4):
-					print_log('--ADE({}s): {:.4f}\t--FDE({}s): {:.4f}'.format(
-						time_i+1, performance['ADE'][time_i]/samples,
-						time_i+1, performance['FDE'][time_i]/samples), self.log)
+				performance, samples= self._test_single_epoch() #average_euclidean = average total distance start to finish - to contextualise how good the FDE and ADE are
+				for i, time_i in enumerate(range(5,21,5)):
+					print_log('--ADE ({} time steps): {:.4f}\t--FDE ({} time steps): {:.4f}'.format(
+						time_i, performance['ADE'][i]/samples,
+						time_i, performance['FDE'][i]/samples), self.log)
 				cp_path = self.cfg.model_path % (epoch + 1)
 				model_cp = {'model_initializer_dict': self.model_initializer.state_dict()}
 				torch.save(model_cp, cp_path)
@@ -353,6 +371,7 @@ class Trainer:
 			pred_mask: None
 			seq: nba
 		"""
+		# data['pre_motion_3D'][..., :3]
 		batch_size = data['pre_motion_3D'].shape[0]
 		num_agents = data['pre_motion_3D'].shape[1]
 
@@ -361,22 +380,51 @@ class Trainer:
 		for i in range(batch_size):
 			traj_mask[i*num_agents:(i+1)*num_agents, i*num_agents:(i+1)*num_agents] = 1.
 
-		# Get last observed pose (for each agent) as initial position
-		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:] # [B, num_agents, 1, 2] or 3D: [B, num_agents, 1, 3]
+		# print('traj_mask: ', traj_mask.size())
+		# Get last observed pose (for each agent) as initial position << both translation and rotation
+		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:] # 2D: [B, num_agents, 1, 2] or 3D: [B, num_agents, 1, 3] or 6D: [B, num_agents, 1, 6]
+		# print('initial_pos:', initial_pos.size()) 
+		
 
 		# augment input: absolute position, relative position, velocity
 		if self.cfg.dataset == 'kitti':
 			past_traj_abs = (data['pre_motion_3D'].cuda() / self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) #LB subtracting mean from absolute positions is not informative for kitti dataset
 		elif self.cfg.dataset == 'nba':
 			past_traj_abs = ((data['pre_motion_3D'].cuda() - self.traj_mean)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) 
+		
 		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions)
 		past_traj_vel = torch.cat((past_traj_rel[:, 1:] - past_traj_rel[:, :-1], torch.zeros_like(past_traj_rel[:, -1:])), dim=1)
 		past_traj = torch.cat((past_traj_abs, past_traj_rel, past_traj_vel), dim=-1)
 
 		fut_traj = ((data['fut_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.future_frames, self.cfg.dimensions)
-		#print('fut_traj: ', fut_traj.size())
+
 		return batch_size, traj_mask, past_traj, fut_traj
 
+	def skew_symmetric(self,w):
+		w0,w1,w2 = w.unbind(dim=-1)
+		O = torch.zeros_like(w0)
+		wx = torch.stack([torch.stack([O,-w2,w1],dim=-1),
+							torch.stack([w2,O,-w0],dim=-1),
+							torch.stack([-w1,w0,O],dim=-1)],dim=-2)
+		return wx
+
+	def taylor_A(self,x,nth=10):
+		# Taylor expansion of sin(x)/x
+		ans = torch.zeros_like(x)
+		denom = 1.
+		for i in range(nth+1):
+			if i>0: denom *= (2*i)*(2*i+1)
+			ans = ans+(-1)**i*x**(2*i)/denom
+		return ans
+	
+	def taylor_B(self,x,nth=10):
+		# Taylor expansion of (1-cos(x))/x**2
+		ans = torch.zeros_like(x)
+		denom = 1.
+		for i in range(nth+1):
+			denom *= (2*i+1)*(2*i+2)
+			ans = ans+(-1)**i*x**(2*i)/denom
+		return ans
 
 	def so3_to_SO3(self,w): # [...,3] added from Ma PoseNet paper
 		wx = self.skew_symmetric(w)
@@ -387,122 +435,173 @@ class Trainer:
 		R = I+A*wx+B*wx@wx
 		return R
 
+	def print_some_stats(self, future, future_rot=None, translation_dims=3):
+		future = future.squeeze(dim=1) #torch.Size([16106, 20, 3])
+
+		distance_per_step = future[:, 1:, :] - future[:, :-1, :]
+		abs_distance_per_step = torch.abs(distance_per_step)
+		total_distance_per_sample = abs_distance_per_step.sum(dim=1) #sum over time steps
+
+
+		mean_distance_x = total_distance_per_sample[:, 0].mean().item()
+		mean_distance_y = total_distance_per_sample[:, 1].mean().item()
+		if translation_dims == 3:
+			mean_distance_z = total_distance_per_sample[:, 2].mean().item()
+		
+
+		step_euclidean = distance_per_step.norm(dim=2)
+		total_euclidean_distance = step_euclidean.sum(dim=1)
+		mean_euclidean_distance = total_euclidean_distance.mean().item()
+
+		if translation_dims == 2:
+			print(f"Total x and y distances travelled: {mean_distance_x:.5f}, {mean_distance_y:.5f}")
+		elif translation_dims == 3:
+			print(f"Total x, y and z distances travelled: {mean_distance_x:.5f}, {mean_distance_y:.5f}, {mean_distance_z:.5f}")
+
+		print(f"Euclidean dist diff avg: {mean_euclidean_distance:.5f}")
+
+		if future_rot is not None:
+			print('Still need to implement rotation statistics')
+	
 	def _train_single_epoch(self, epoch):
 		
 		self.model.train()
 		self.model_initializer.train()
-		loss_total, loss_dt, loss_dc, count = 0, 0, 0, 0
+		loss_total, loss_dt, loss_dc, loss_trans, loss_rot, count = 0, 0, 0, 0, 0,0
 		#LB 3D addition to reshape tensors 
 		
 		for data in self.train_loader:
+			# print("data['fut_motion_3D'].shape: ", data['fut_motion_3D'].shape)
 			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
 
-			# print('traj_mask:', traj_mask.size()) # [32, 8, 6] < 8 timesteps, as expected
-			# print('past_traj:', past_traj.size()) # [32, 8, 6] < 8 timesteps, as expected
-			# print('fut_traj:', fut_traj.size()) # [32, 8, 6] < GT poses for future_frames timesteps
+			# print('traj_mask:', traj_mask.size()) # [32, 32]
+			# print('past_traj:', past_traj.size()) # [32, 15, 9] 
+			# print('fut_traj:', fut_traj.size()) # [32, 8, 3] < GT poses for future_frames timesteps
 
-			# LED initializer outputs (original)
+			### LED initializer outputs (original)
+			#uses the past trajectory (and possibly social context) to produce a mean and variance for the future trajectory - sampled from to get candidate future trajectories next
 			sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
+
 			# print("sample_prediction shape:", sample_prediction.shape)
 			# print("mean_estimation shape:", mean_estimation.shape)
 			# print("variance_estimation shape:", variance_estimation.shape)
-			
+		
 
 			# Reparameterisation with uncertainty (original)
 			sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
-			loc = sample_prediction + mean_estimation[:, None]
 			# print('sample_prediction:', sample_prediction.size())
-			# print('loc:', loc.size())
+
+
+			loc = sample_prediction + mean_estimation[:, None]
+			# print('loc:', loc.size()) #[32, 24, 24, 3]
+			
 			
 
 			# Generate K alternative future trajectories - multi-modal
 			k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #(B, K, T, 6)
-			#generated_y = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) 
-
+			# print(k_alternative_preds.size())
+			# print(k_alternative_preds[0])
+			### 3D/2D code
+			if self.cfg.dimensions in [2,3]:
+				#squared distances / Euclidian, equal weight for all timesteps
+				loss_distance = ((k_alternative_preds - fut_traj.unsqueeze(dim=1)).norm(p=2, dim=-1) * 
+								self.temporal_reweight
+								).mean(dim=-1).min(dim=1)[0].mean()
+				loss_uncertainty = (torch.exp(-variance_estimation)*
+									(k_alternative_preds - fut_traj.unsqueeze(dim=1)).norm(p=2, dim=-1).mean(dim=(1, 2)) + 
+									variance_estimation
+									).mean()
 			
-			# print('Predictions batch:', generated_y.size())
-			# print('GT batch:', fut_traj.size())
+			elif self.cfg.dimensions == 6:
+				#generated_y = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) 
 
-			# print('Prediction 0 shape:', generated_y[0].size())
-			# print('GT 0 shape:', fut_traj[0].size())
+				# print('Predictions batch:', generated_y.size())
+				# print('GT batch:', fut_traj.size())
 
-			# print('Prediction:', generated_y[0])
-			# print('GT:', fut_traj[0])
+				# print('Prediction 0 shape:', generated_y[0].size())
+				# print('GT 0 shape:', fut_traj[0].size())
 
+				# print('Prediction:', generated_y[0])
+				# print('GT:', fut_traj[0])
 
-			# For loss, unsqueeze the ground truth to have predictions dimension
-			fut_traj_wpreds = fut_traj.unsqueeze(dim=1)
+				# For loss, unsqueeze the ground truth to have predictions dimension
+				"""6D specific code"""
+				fut_traj_wpreds = fut_traj.unsqueeze(dim=1)
 
-			# Split into translation and rot
-			pred_trans = k_alternative_preds[..., :3]    # (B, K, T, 3)
-			pred_rot_lie = k_alternative_preds[..., 3:]    # (B, K, T, 3)
-			gt_trans = fut_traj_wpreds[..., :3]      # (B, 1, T, 3)
-			gt_rot_lie = fut_traj_wpreds[..., 3:]      # (B, 1, T, 3)
+				# Split into translation and rot
+				pred_trans = k_alternative_preds[..., :3]    # (B, K, T, 3)
+				pred_rot_lie = k_alternative_preds[..., 3:]    # (B, K, T, 3)
+				gt_trans = fut_traj_wpreds[..., :3]      # (B, 1, T, 3)
+				gt_rot_lie = fut_traj_wpreds[..., 3:]      # (B, 1, T, 3)
 
-			### (1) TRANSLATION LOSS
-			# L2 Euclidian distance - squared distances, equal weight for timesteps
-			trans_diff = pred_trans-gt_trans # (B, K, T, 3)
-			trans_error = trans_diff.norm(p=2, dim=-1) # (B, K, T)
+				### (1) TRANSLATION LOSS
+				# L2 Euclidian distance - squared distances, equal weight for timesteps
+				trans_diff = pred_trans-gt_trans # (B, K, T, 3)
+				trans_error = trans_diff.norm(p=2, dim=-1) # (B, K, T)
 
-			loss_trans = (trans_error * self.temporal_reweight).mean(dim=-1)	# (B, K) loss for all k preds
+				loss_translation = (trans_error * self.temporal_reweight).mean(dim=-1)	# (B, K) loss for all k preds
+				
+				### (2) ROTATION LOSS (Geodesic)
+				#(original) squared distances / Euclidian, equal weight for all timesteps
+				# loss_dist = (	(generated_y - fut_traj_wpreds).norm(p=2, dim=-1) 
+				# 					* 
+				# 				 self.temporal_reweight
+				# 			).mean(dim=-1).min(dim=1)[0].mean()
+				# loss_uncertainty = (torch.exp(-variance_estimation)
+				#    						*
+				# 					(generated_y - fut_traj_wpreds).norm(p=2, dim=-1).mean(dim=(1, 2)) 
+				# 						+ 
+				# 					variance_estimation
+				# 					).mean()
+				
+				# print(loss_dist)
+				# print(loss_uncertainty)
+
+				# convert Lie algebra rotations to classic 3x3 rotation matrices - need to flatten and unflatten into rot matrix
+				B, K, T, _ = pred_rot_lie.shape
+				pred_rot_flat = pred_rot_lie.view(-1, 3)          # (B*K*T, 3)
+				pred_R = self.so3_to_SO3(pred_rot_flat)         # (B*K*T, 3, 3)
+				pred_R = pred_R.view(B, K, T, 3, 3)
+
+				# Same for ground truth
+				gt_rot_lie_expanded = gt_rot_lie.expand(B, K, T, 3)  # (B, K, T, 3)
+				gt_rot_flat = gt_rot_lie_expanded.contiguous().view(-1, 3)  # (B*K*T, 3)
+				gt_R = self.so3_to_SO3(gt_rot_flat)              # (B*K*T, 3, 3)
+				gt_R = gt_R.view(B, K, T, 3, 3)
+
+				# Compute relative rotation: R_diff = R_pred^T * R_gt.
+				R_diff = torch.matmul(pred_R.transpose(-2, -1), gt_R)  # (B, K, T, 3, 3)
+
+				#get rotation error angle theta of rot 3x3 rot matrix
+				trace = R_diff[..., 0, 0] + R_diff[..., 1, 1] + R_diff[..., 2, 2]  # (B, K, T) trace of each individual relative rotation matrix
+				# Clamp to avoid numerical issues
+				angular_error_theta = torch.acos(torch.clamp((trace - 1) / 2, -1 + 1e-6, 1 - 1e-6))  # (B, K, T) take arccosine to get error angle cos(theta) = trace(R)-1 / 2 with clamping -1 + 1e-6, 1 - 1e-6
+				loss_rotation = angular_error_theta.mean(dim=-1)  # average over time, so one loss per candidate K, shape (B, K)
 			
-			### (2) ROTATION LOSS (Geodesic)
-			#(original) squared distances / Euclidian, equal weight for all timesteps
-			# loss_dist = (	(generated_y - fut_traj_wpreds).norm(p=2, dim=-1) 
-			# 					* 
-			# 				 self.temporal_reweight
-			# 			).mean(dim=-1).min(dim=1)[0].mean()
-			# loss_uncertainty = (torch.exp(-variance_estimation)
-		    #    						*
-			# 					(generated_y - fut_traj_wpreds).norm(p=2, dim=-1).mean(dim=(1, 2)) 
-			# 						+ 
-			# 					variance_estimation
-			# 					).mean()
-			
-			# print(loss_dist)
-			# print(loss_uncertainty)
-
-			# convert Lie algebra rotations to classic 3x3 rotation matrices - need to flatten and unflatten into rot matrix
-			B, K, T, _ = pred_rot_lie.shape
-			pred_rot_flat = pred_rot_lie.view(-1, 3)          # (B*K*T, 3)
-			pred_R = self.so3_to_SO3(pred_rot_flat)         # (B*K*T, 3, 3)
-			pred_R = pred_R.view(B, K, T, 3, 3)
-
-			# Same for ground truth
-			gt_rot_lie_expanded = gt_rot_lie.expand(B, K, T, 3)  # (B, K, T, 3)
-			gt_rot_flat = gt_rot_lie_expanded.contiguous().view(-1, 3)  # (B*K*T, 3)
-			gt_R = self.so3_to_SO3(gt_rot_flat)              # (B*K*T, 3, 3)
-			gt_R = gt_R.view(B, K, T, 3, 3)
-
-			# Compute relative rotation: R_diff = R_pred^T * R_gt.
-			R_diff = torch.matmul(pred_R.transpose(-2, -1), gt_R)  # (B, K, T, 3, 3)
-
-			#get rotation error angle theta of rot 3x3 rot matrix
-			trace = R_diff[..., 0, 0] + R_diff[..., 1, 1] + R_diff[..., 2, 2]  # (B, K, T) trace of each individual relative rotation matrix
-			# Clamp to avoid numerical issues
-			angular_error_theta = torch.acos(torch.clamp((trace - 1) / 2, -1 + 1e-6, 1 - 1e-6))  # (B, K, T) take arccosine to get error angle cos(theta) = trace(R)-1 / 2 with clamping -1 + 1e-6, 1 - 1e-6
-			loss_rot = angular_error_theta.mean(dim=-1)  # average over time, so one loss per candidate K, shape (B, K)
-        
-
-			### (1+2) COMBINED DISTANCE LOSS (ROT AND TRANS)
-			combined_error = loss_trans + loss_rot  # (B, K) add translation and rotation error
-			loss_distance = combined_error.min(dim=1)[0].mean()  # some scalar << choose minimum error of K candidate futures
+				### (1+2) COMBINED DISTANCE LOSS (ROT AND TRANS)
+				combined_error = loss_translation + loss_rotation  # (B, K) add translation and rotation error
+				loss_distance = combined_error.min(dim=1)[0].mean()  # some scalar << for whole batch, choose k_pred with lowest error, then average the error into one distance loss scalar
 
 
-			### (3) UNCERTAINTY LOSS (original)
-			loss_uncertainty = (
-				torch.exp(-variance_estimation) *
-				(k_alternative_preds - fut_traj_wpreds).norm(p=2, dim=-1).mean(dim=(1, 2)) + 
-				variance_estimation
-			).mean()
+				### (3) UNCERTAINTY LOSS (original)
+				loss_uncertainty = (
+					torch.exp(-variance_estimation) *
+					(k_alternative_preds - fut_traj_wpreds).norm(p=2, dim=-1).mean(dim=(1, 2)) + 
+					variance_estimation
+				).mean()
 			
 			
 			### TOTAL LOSS
-			loss = loss_distance * 50 + loss_uncertainty
+			"""2D/3D/6D code continues here"""
+			loss = loss_distance * 50 + loss_uncertainty #make distance loss more important than uncertainty loss (?) TODO maybe not this much
 
 			loss_total += loss.item()
 			loss_dt += loss_distance.item()*50
 			loss_dc += loss_uncertainty.item()
+
+			if self.cfg.dimensions == 6:
+				loss_trans += loss_translation.min(dim=1)[0].mean().item()
+				loss_rot += loss_rotation.min(dim=1)[0].mean().item()
 
 			self.opt.zero_grad()
 			loss.backward()
@@ -514,7 +613,7 @@ class Trainer:
 			if self.cfg.debug and count == 2:
 				break
 
-		return loss_total/count, loss_dt/count, loss_dc/count
+		return loss_total/count, loss_trans/count, loss_rot/count, loss_dt/count, loss_dc/count
 
 
 	def _test_single_epoch(self): #for 6D still want to evaluate the trajectory error on the translation part only TODO
@@ -527,27 +626,32 @@ class Trainer:
 			torch.manual_seed(rand_seed)
 			torch.cuda.manual_seed_all(rand_seed)
 		prepare_seed(0)
+
 		count = 0
 		with torch.no_grad():
 			for data in self.test_loader:
 				batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
 
+
+				# LED initializer outputs
 				sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
 				sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
 				loc = sample_prediction + mean_estimation[:, None]
 			
+           		# Generate candidate future trajectories (B, K, T, 6)
 				pred_traj = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
-				print('pred_traj: ', pred_traj.size())
-				exit()
 
+				fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.future_frames, 1, 1) #expand GT to match k_preds dimension (B, 1, T, 6)
 
-				fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.future_frames, 1, 1)
-				# b*n, K, T, 2
-				distances = torch.norm(fut_traj - pred_traj, dim=-1) * self.traj_scale
+				pred_traj_trans = pred_traj[..., :3]  # (B, K, T, 3)
+				fut_traj_trans = fut_traj[..., :3]      # (B, 1, T, 3)
+
+				distances = torch.norm(fut_traj_trans - pred_traj_trans, dim=-1) * self.traj_scale ## Euclidian translation errors (B, K, T)
 				# print('distances: ', distances)
+
+            	# Compute ADE and FDE at different timesteps. TODO improve
+				# Here we compute ADE and FDE for time steps: 5, 10, 15, and 20.
 				for time_i in range(1, 5):
-					# ade = (distances[:, :, :5*time_i]).mean(dim=-1).min(dim=-1)[0].sum()
-					# fde = (distances[:, :, 5*time_i-1]).min(dim=-1)[0].sum()
 					max_index = min(5 * time_i - 1, distances.shape[2] - 1)  # Ensure index does not exceed the array size = future timesteps
 					"""
 					1s: 5 * 1 - 1 = 4 → Requires at least 5 timesteps.
@@ -555,15 +659,14 @@ class Trainer:
 					3s: 5 * 3 - 1 = 14 → Requires at least 15 timesteps.
 					4s: 5 * 4 - 1 = 19 → Requires at least 20 timesteps.
 					"""
-					ade = (distances[:, :, :max_index + 1]).mean(dim=-1).min(dim=-1)[0].sum()
-					fde = (distances[:, :, max_index]).min(dim=-1)[0].sum()
+					ade = (distances[:, :, :max_index + 1]).mean(dim=-1).min(dim=-1)[0].sum() # ADE: average error over the time window, choose best candidate
+					fde = (distances[:, :, max_index]).min(dim=-1)[0].sum() # FDE: error at the final time step in the window, choose best candidate
 
 					performance['ADE'][time_i-1] += ade.item()
 					performance['FDE'][time_i-1] += fde.item()
 				samples += distances.shape[0]
 				count += 1
-				# if count==100:
-				# 	break
+			
 		return performance, samples
 
 
@@ -603,7 +706,6 @@ class Trainer:
 				torch.save(pred_mean, root_path+'p_mean_denoise.pt')
 
 				raise ValueError
-
 
 
 	def test_single_model(self):

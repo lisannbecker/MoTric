@@ -39,8 +39,7 @@ class LEDInitializer(nn.Module):
 		x: batch size, t_p, 6
 		'''
 		mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-		#print(x)
-		#exit()
+
 		social_embed = self.social_encoder(x, mask)
 		social_embed = social_embed.squeeze(1)
 		# B, 256

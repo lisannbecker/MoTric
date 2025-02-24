@@ -331,14 +331,17 @@ class Trainer:
 		for i in range(batch_size):
 			traj_mask[i*num_agents:(i+1)*num_agents, i*num_agents:(i+1)*num_agents] = 1.
 
+		# print('traj_mask: ', traj_mask.size())
 		# Get last observed pose (for each agent) as initial position
 		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:] # [B, num_agents, 1, 2] or 3D: [B, num_agents, 1, 3]
+		# print('initial_pos:', initial_pos.size()) 
 
 		# augment input: absolute position, relative position, velocity
 		if self.cfg.dataset == 'kitti':
 			past_traj_abs = (data['pre_motion_3D'].cuda() / self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) #LB subtracting mean from absolute positions is not informative for kitti dataset
 		elif self.cfg.dataset == 'nba':
 			past_traj_abs = ((data['pre_motion_3D'].cuda() - self.traj_mean)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) 
+		
 		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions)
 		past_traj_vel = torch.cat((past_traj_rel[:, 1:] - past_traj_rel[:, :-1], torch.zeros_like(past_traj_rel[:, -1:])), dim=1)
 		past_traj = torch.cat((past_traj_abs, past_traj_rel, past_traj_vel), dim=-1)
@@ -358,9 +361,9 @@ class Trainer:
 		for data in self.train_loader:
 			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
 
-			# print('traj_mask:', traj_mask.size()) # [32, 8, 6] < 8 timesteps, as expected
-			# print('past_traj:', past_traj.size()) # [32, 8, 6] < 8 timesteps, as expected
-			# print('fut_traj:', fut_traj.size()) # [32, 8, 6] < GT poses for future_frames timesteps
+			# print('traj_mask:', traj_mask.size()) # [32, 32]
+			# print('past_traj:', past_traj.size()) # [32, 15, 9] < [B, Past poses, dimension * 3]
+			# print('fut_traj:', fut_traj.size()) # [32, 24, 3] < GT poses for future_frames timesteps
 
 
 			sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
@@ -371,8 +374,8 @@ class Trainer:
 			sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
 			loc = sample_prediction + mean_estimation[:, None]
 			# print('sample_prediction:', sample_prediction.size())
-			# print('loc:', loc.size())
-			
+			# print('loc:', loc.size()) #torch.Size([32, 24, 24, 3])
+			# exit()
 			generated_y = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #k_preds alternative future poses for future_frames timesteps
 			
 			# print('Predictions batch:', generated_y.size())

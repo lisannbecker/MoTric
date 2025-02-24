@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
 import os
 import sys
+import random
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
@@ -23,198 +24,115 @@ warnings.filterwarnings("ignore", category=UserWarning)
 ### Only one can be True
 Danda = False
 Fully_Custom = False
-LED2D = False
+LED2D = True
 LED3D = False
-LED6D = True
+LED6D = False
 
 
 
-class KITTIDatasetLeapfrog2D(Dataset): # corresponds to class NBADataset in dataloader_nba.py
 
-    """
-    Kitti dataset class compatible with leapfrog (LED) pipeline.
-
-    NOTE: Loads x y translation (original LED) only instead of full SE3 pose.
-    """
-
-    def __init__(self, input_size, preds_size, training, transform=None):
-        """
-        input_size (int): number of poses used as input (past trajectory)
-        preds_size (int): nr of poses to be predicted (future trajectory)
-        training (boolean): train or test set data
-        """
-
-        #TODO fixed seed random instead of fixed sequences for train and test
-        window_size = input_size+preds_size
-        if training ==True:
-            traj_list = ['00', '01', '02', '03', '04', '05', '06', '07']
-        else:
-            traj_list = ['08', '09', '10']
-
-        ### Load and split data from all KITTI trajectories
-        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size)
-            # p_inputs: [num_windows, input_size, 3, 4]
-            # p_targets: [num_windows, window_size - input_size, 3, 4]
-
-
-        ### 1. Extract only x and y translation
-        self.pre_motion_2D = p_inputs[:, :, :2, 3]  # [num_windows, input_size, 2]
-        self.fut_motion_2D = p_targets[:, :, :2, 3]  # [num_windows, window_size - input_size, 2]
-
-
-        self.pre_motion_2D = p_inputs[:,:,[0,2],3] 
-        self.fut_motion_2D = p_targets[:, :, [0,2], 3]
-
-        ### 2. LED pipeline uses an extra dimension at index 1 for the number of agents
-        # We add this extra dimension and set it to 1 as Kitti is single-agent
-        self.pre_motion_3D = self.pre_motion_2D.unsqueeze(1) #[num_windows, 1, input_size, 2]
-        self.fut_motion_3D = self.fut_motion_2D.unsqueeze(1) #[num_windows, 1, (window_size - input_size), 2]
-
-        ### 3. Create masks (all 1s) matching the temporal dimensions
-        self.pre_motion_mask = torch.ones(self.pre_motion_3D.shape[0], 1, self.pre_motion_3D.shape[2])
-        self.fut_motion_mask = torch.ones(self.fut_motion_3D.shape[0], 1, self.fut_motion_3D.shape[2])
-
-        self.transform = transform #TODO use in the future for relative/normalised trajectories
-
-    def __len__(self):
-        return self.pre_motion_3D.shape[0]
-
-    def __getitem__(self, idx):
-        sample = {
-            'pre_motion_3D': self.pre_motion_3D[idx],  # [1, input_size, 3, 4]
-            'fut_motion_3D': self.fut_motion_3D[idx],    # [1, target_length, 3, 4]
-            'pre_motion_mask': self.pre_motion_mask[idx],  # [1, input_size]
-            'fut_motion_mask': self.fut_motion_mask[idx],  # [1, target_length]
-        }
-        if self.transform:
-            sample = self.transform(sample)
-        return sample
-
-class KITTIDatasetLeapfrog3D(Dataset): #Similar to class NBADataset in dataloader_nba.py
-
-    """
-    Kitti dataset class compatible with leapfrog (LED) pipeline.
-    NOTE: Loads x z y translation instead of full SE3 pose.
-    """
-
-    def __init__(self, input_size, preds_size, training, transform=None):
-        """
-        input_size (int): number of poses used as input (past trajectory)
-        preds_size (int): nr of poses to be predicted (future trajectory)
-        training (boolean): train or test set data
-        """
-
-        #TODO fixed seed random instead of fixed sequences for train and test
-        window_size = input_size+preds_size
-        if training ==True:
-            traj_list = ['00', '01', '02', '03', '04', '05', '06', '07']
-        else:
-            traj_list = ['08', '09', '10']
-
-        ### Load and split data from all KITTI trajectories
-        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size)
-            # p_inputs: [num_windows, input_size, 3, 4]
-            # p_targets: [num_windows, output_size, 3, 4]
-
-        ### 1. Extract x, z, y translation
-        self.pre_motion_2D = p_inputs[:, :, :3, 3]  # [num_windows, input_size, 3] << 3D adjustment
-        self.fut_motion_2D = p_targets[:, :, :3, 3]  # [num_windows, output_size, 3] << 3D adjustment
-
-        ### 2. LED pipeline uses an extra dimension at index 1 for the number of agents
-        # We add this extra dimension and set it to 1 as Kitti is single-agent
-        self.pre_motion_3D = self.pre_motion_2D.unsqueeze(1) #[num_windows, 1, input_size, 3]
-        self.fut_motion_3D = self.fut_motion_2D.unsqueeze(1) #[num_windows, 1, output_size, 3]
-        
-        
-
-        # print(self.pre_motion_3D.size())
-        # print(self.fut_motion_3D.size())
-
-        ### 3. Create masks (all 1s) matching the temporal dimensions
-        self.pre_motion_mask = torch.ones(self.pre_motion_3D.shape[0], 1, self.pre_motion_3D.shape[2])
-        self.fut_motion_mask = torch.ones(self.fut_motion_3D.shape[0], 1, self.fut_motion_3D.shape[2])
-
-        self.transform = transform #TODO use in the future for relative/normalised trajectories
-
-    def __len__(self):
-        return self.pre_motion_3D.shape[0]
-
-    def __getitem__(self, idx):
-        sample = {
-            'pre_motion_3D': self.pre_motion_3D[idx],  # [1, input_size, 3, 4]
-            'fut_motion_3D': self.fut_motion_3D[idx],    # [1, target_length, 3, 4]
-            'pre_motion_mask': self.pre_motion_mask[idx],  # [1, input_size]
-            'fut_motion_mask': self.fut_motion_mask[idx],  # [1, target_length]
-        }
-        if self.transform:
-            sample = self.transform(sample)
-        return sample
-
-class KITTIDatasetLeapfrog6D(Dataset): #3D translation and 3D Lie algebra for rotation
+class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotation
 
     """
     Kitti dataset class compatible with leapfrog (LED) pipeline.
     NOTE: Loads x z y translation (original LED) and Dual Quaternions: full SE3 pose.
     """
 
-    def __init__(self, input_size, preds_size, training, transform=None):
+    def __init__(self, dims: int, input_size: int, preds_size: int, training: bool, relative=False, normalised=False, train_ratio=0.85, seed=42):
         """
         input_size (int): number of poses used as input (past trajectory)
         preds_size (int): nr of poses to be predicted (future trajectory)
         training (boolean): train or test set data
-        """
-
-        self.lie = Lie()
-
-        #TODO fixed seed random instead of fixed sequences for train and test
+        """            
         window_size = input_size+preds_size
-        if training ==True:
-            traj_list = ['00', '01', '02', '03', '04', '05', '06', '07']
-        else:
-            traj_list = ['08', '09', '10']
+
+        traj_list = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
 
         ### Load and split data from all KITTI trajectories
-        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size)
-            # p_inputs: [num_windows, input_size, 3, 4]
-            # p_targets: [num_windows, output_size, 3, 4]
+        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size, relative, normalised) 
+        # p_inputs: [num_windows, input_size, 3, 4] p_targets: [num_windows, output_size, 3, 4]
 
-        ### 1. Extract x, z, y translation
-        self.pre_motion_2D = p_inputs[:, :, :3, 3]  # [num_windows, input_size, 3] << 3D adjustment
-        self.fut_motion_2D = p_targets[:, :, :3, 3]  # [num_windows, output_size, 3] << 3D adjustment
+        # print(f'Time diff avg (fut): {(t_targets[:,-1]-t_targets[:,0]).mean(dim=-1).item():.5f}')
 
-        ### 2. LED pipeline uses an extra dimension at index 1 for the number of agents
-        # We add this extra dimension and set it to 1 as Kitti is single-agent
-        self.pre_motion_3D = self.pre_motion_2D.unsqueeze(1) #[num_windows, 1, input_size, 3]
-        self.fut_motion_3D = self.fut_motion_2D.unsqueeze(1) #[num_windows, 1, output_size, 3]
-        
-        ### 3. Create masks (all 1s) matching the temporal dimensions
-        self.pre_motion_mask = torch.ones(self.pre_motion_3D.shape[0], 1, self.pre_motion_3D.shape[2])
-        self.fut_motion_mask = torch.ones(self.fut_motion_3D.shape[0], 1, self.fut_motion_3D.shape[2])
-        
 
-        ### 4. Load Kitti rotations as Lie algebra
-        rot_pre = p_inputs[:,:,:3,:3]   # [num_windows, input_size, 3, 3]
-        rot_fut = p_targets[:,:,:3,:3]  # [num_windows, output_size, 3, 3]
+        ### 1.1. 2D: Extract x, y translation
+        if dims == 2:
+            trans_pre = p_inputs[:, :, [0,2], 3]  # [num_windows, input_size, 2] << 2D 
+            trans_fut = p_targets[:, :, [0,2], 3]  # [num_windows, output_size, 2] << 2D 
+        ### 1.1. 3D/6D: Extract x, z, y translation
+        else:
+            trans_pre = p_inputs[:, :, :3, 3]  # [num_windows, input_size, 3] << 3D adjustment
+            trans_fut = p_targets[:, :, :3, 3]  # [num_windows, output_size, 3] << 3D adjustment
+            # print(trans_pre[0], '\n', trans_fut[0])
 
-        num_windows, seq_len_pre = rot_pre.shape[:2] #to apply conversion
-        num_windows_fut, seq_len_fut = rot_fut.shape[:2]
 
-        rot_pre_flat = rot_pre.reshape(-1, 3, 3)
-        lie_pre_flat = self.lie.SO3_to_so3(rot_pre_flat)  # [N, 3]
-        lie_pre = lie_pre_flat.reshape(num_windows, seq_len_pre, 3)  # [num_windows, input_size, 3]
+        ### 1.2. 6D: Extract rotation and convert to Lie algebra (and make relative)
+        if dims ==6:
+            self.lie = Lie()
 
-        rot_fut_flat = rot_fut.reshape(-1, 3, 3)
-        lie_fut_flat = self.lie.SO3_to_so3(rot_fut_flat)  # [N, 3]
-        lie_fut = lie_fut_flat.reshape(num_windows_fut, seq_len_fut, 3)  # [num_windows, output_size, 3]
+            if relative:
+                rotations_pre, rotations_fut = to_relative_rotations(p_inputs, p_targets, input_size, self.lie)
 
-        # Add agent dimension
-        self.pre_motion_lie = lie_pre.unsqueeze(1)  # [num_windows, 1, input_size, 3]
-        self.fut_motion_lie = lie_fut.unsqueeze(1)  # [num_windows, 1, output_size, 3]
+                # Now convert the relative rotation matrices into Lie algebra vectors
+                num_windows, seq_len_pre, _, _ = rotations_pre.shape
+                num_windows_fut, seq_len_fut, _, _ = rotations_fut.shape
+                # lie_pre:  [num_windows, input_size, 3]
+                # lie_fut:  [num_windows, output_size, 3]
+            else:
+                #Convert absolute rotations (for each time step) to Lie algebra
+                rotations_pre = p_inputs[:, :, :3, :3]  # [num_windows, input_size, 3, 3]
+                rotations_fut = p_targets[:, :, :3, :3]  # [num_windows, output_size, 3, 3]
 
-        print(self.pre_motion_lie.size())
-        print(self.fut_motion_lie.size())
+                num_windows, seq_len_pre = rotations_pre.shape[:2]
+                num_windows_fut, seq_len_fut = rotations_fut.shape[:2]
 
-        self.transform = transform #TODO use in the future for relative/normalised trajectories
+
+            rotations_pre_flat = rotations_pre.reshape(-1, 3, 3)
+            lie_pre_flat = self.lie.SO3_to_so3(rotations_pre_flat)  # [N, 3]
+            lie_pre = lie_pre_flat.reshape(num_windows, seq_len_pre, 3)
+
+            rotations_fut_flat = rotations_fut.reshape(-1, 3, 3)
+            lie_fut_flat = self.lie.SO3_to_so3(rotations_fut_flat)
+            lie_fut = lie_fut_flat.reshape(num_windows_fut, seq_len_fut, 3)
+
+
+            ### 2. Concatenate translations and rotation and add agent dimension (1 for single-agent Kitti)
+            SE3_pre = torch.cat([trans_pre, lie_pre], dim=-1)
+            SE3_fut = torch.cat([trans_fut, lie_fut], dim=-1)
+
+        else: #2D or 3D
+            SE3_pre = trans_pre
+            SE3_fut = trans_fut
+
+        ### 3. Add agent dimension
+        all_pre = SE3_pre.unsqueeze(1)  # [num_windows, 1, input_size, 6]
+        all_fut = SE3_fut.unsqueeze(1)  # [num_windows, 1, output_size, 6]
+
+
+        ### 4. Create masks (all 1s) matching the temporal dimensions
+        all_pre_mask = torch.ones(all_pre.shape[0], 1, all_pre.shape[2])
+        all_fut_mask = torch.ones(all_fut.shape[0], 1, all_fut.shape[2])
+
+
+        # 5. Randomly split the windows using a fixed seed 
+        total_windows = all_pre.shape[0]
+        indices = list(range(total_windows))
+        random.seed(seed)
+        random.shuffle(indices)
+        split_idx = int(total_windows * train_ratio)
+
+        if training:
+            selected_indices = indices[:split_idx]
+        else:
+            selected_indices = indices[split_idx:]
+
+        # Subset data
+        self.pre_motion_3D = all_pre[selected_indices]
+        self.fut_motion_3D = all_fut[selected_indices]
+        self.pre_motion_mask = all_pre_mask[selected_indices]
+        self.fut_motion_mask = all_fut_mask[selected_indices]
+
+
 
     def __len__(self):
         return self.pre_motion_3D.shape[0]
@@ -223,15 +141,13 @@ class KITTIDatasetLeapfrog6D(Dataset): #3D translation and 3D Lie algebra for ro
         sample = {
             'pre_motion_3D': self.pre_motion_3D[idx],  # [1, input_size, 3, 4]
             'fut_motion_3D': self.fut_motion_3D[idx],    # [1, target_length, 3, 4]
-            'pre_motion_lie': self.pre_motion_lie[idx],    # [1, input_size, 3] Lie algebra representation of rots
-            'fut_motion_lie': self.fut_motion_lie[idx],    # [1, output_size, 3]
+            # 'pre_motion_lie': self.pre_motion_lie[idx],    # [1, input_size, 3] Lie algebra representation of rots
+            # 'fut_motion_lie': self.fut_motion_lie[idx],    # [1, output_size, 3]
             'pre_motion_mask': self.pre_motion_mask[idx],  # [1, input_size]
             'fut_motion_mask': self.fut_motion_mask[idx],  # [1, target_length]
         }
-        if self.transform:
-            sample = self.transform(sample)
-        return sample
 
+        return sample
 
 
 
@@ -241,22 +157,6 @@ def seq_collate_kitti(data): #allows to have None as pred_mask (as opposed to de
     pre_motion_mask = torch.stack([d['pre_motion_mask'] for d in data], dim=0)
     fut_motion_mask = torch.stack([d['fut_motion_mask'] for d in data], dim=0)
 
-    if 'pre_motion_lie' in data[0]:
-        pre_motion_lie = torch.stack([d['pre_motion_lie'] for d in data], dim=0)
-        fut_motion_lie = torch.stack([d['fut_motion_lie'] for d in data], dim=0)
-
-        return {
-            'pre_motion_3D': pre_motion_3D,
-            'fut_motion_3D': fut_motion_3D,
-            'pre_motion_lie': pre_motion_lie,
-            'fut_motion_lie': fut_motion_lie,            
-            'pre_motion_mask': pre_motion_mask,
-            'fut_motion_mask': fut_motion_mask,
-            'traj_scale': 1, # no scaling
-            'pred_mask': None,
-            'seq': 'kitti'
-        }
-    
     # additional keys to match LED's output.
     return {
         'pre_motion_3D': pre_motion_3D,
@@ -448,40 +348,81 @@ def rigid_to_dual_quaternion(R_mat, t):
 
 
 def to_relative(pose_windows, time_windows, input_size):
+    rotations = pose_windows[..., :3]
+    translations = pose_windows[..., 3]
+    
     last_idx = input_size-1
-    last_poses = pose_windows[:, last_idx, :, :].unsqueeze(1) #[num_windows, 1, 3, 4] all last poses that need to subtracted
-    # print(last_poses.size())
-    pose_windows_relative = pose_windows-last_poses
-    # print(pose_windows_relative[0])
+    last_translation = translations[:, last_idx, :].unsqueeze(1) #[num_windows, 1, 3] Get translation at the last input time step
 
+    translations_relative = translations-last_translation   # subtract last pose of past trajectory / current pose from all poses
+                                                            # future will be pos, past neg
+
+    #same for times
     last_times = time_windows[:, last_idx].unsqueeze(1) #[num_windows, 1]
-    # print(last_times.size())
     time_windows_relative = time_windows-last_times
-    #print(time_windows_relative[100])
 
+    #concat into one matrix again
+    translations_relative = translations_relative.unsqueeze(-1)
+    pose_windows_relative = torch.cat([rotations, translations_relative], dim=-1)
     return pose_windows_relative, time_windows_relative
+
+def to_relative_rotations(past_pose_windows, fut_pose_windows, input_size, lie_converter):
+    """
+    Computes relative rotations for both past and future pose windows relative to the 
+    most recent rotation in the past (current rotation).
+
+    Args:
+        past_pose_windows: Tensor of shape [num_windows, input_size, 3, 4] 
+                           (each 3x4 contains a 3x3 rotation and a translation)
+        fut_pose_windows:  Tensor of shape [num_windows, output_size, 3, 4]
+        input_size: Number of past poses.
+        lie_converter: An instance (or function) that converts a 3x3 rotation matrix to a 3D Lie algebra vector.
+    
+    Returns:
+        lie_past: Relative rotations for the past, as Lie algebra vectors, 
+                  shape [num_windows, input_size, 3]
+        lie_fut:  Relative rotations for the future, as Lie algebra vectors,
+                  shape [num_windows, output_size, 3]
+    """
+    # Extract rotations (first 3x3 block) from the 3x4 pose matrices
+    rotations_past = past_pose_windows[..., :3, :3]  # [num_windows, input_size, 3, 3]
+    rotations_fut = fut_pose_windows[..., :3, :3]    # [num_windows, output_size, 3, 3]
+    
+    # Get the reference rotation: last rotation from the past sequence
+    # Shape: [num_windows, 3, 3]
+    R_ref = rotations_past[:, input_size - 1]
+    
+    # Compute the transpose of R_ref (for each window)
+    R_ref_T = R_ref.transpose(-2, -1)  # [num_windows, 3, 3]
+    
+    # For past: compute relative rotations: R_rel = R_ref^T @ R
+    # Using broadcasting: (R_ref_T is [num_windows, 3, 3]) and rotations_past is [num_windows, input_size, 3, 3]
+    # We add an extra dimension so that multiplication works along the time dimension.
+    rel_rotations_past = torch.matmul(R_ref_T.unsqueeze(1), rotations_past)
+    # For future: similarly, compute relative rotations for future poses.
+    rel_rotations_fut = torch.matmul(R_ref_T.unsqueeze(1), rotations_fut)
+
+    # print(rel_rotations_past[0])
+    # print(rel_rotations_fut[0])
+
+    return rel_rotations_past, rel_rotations_fut
 
 def to_normalised(pose_windows, time_windows, input_size):
     """Normalise times and translations but not rotations"""
     t_min = time_windows.min(dim=1, keepdim=True)[0] #(minimum_value, minimum_value_index)
     t_max = time_windows.max(dim=1, keepdim=True)[0]
 
-    #Scale to [-1,1] TODO is this ideal?
     time_windows = 2 * (time_windows - t_min) / (t_max - t_min) - 1
-    # print(time_windows.size()) #[4529, 13]
-    # print(time_windows[0])
 
-    # print(pose_windows[0])
 
     translations_only = pose_windows[:,:,:3,3]
-    # print(translations_only[0])
+
     # print(translations_only.size()) #[4529, 13, 3]
     trans_min = translations_only.min(dim=1, keepdim=True)[0] #takes minimum independently for each coordinate - pose invariant
     trans_max = translations_only.max(dim=1, keepdim=True)[0]
 
     translations_normalised = 2 * (translations_only - trans_min) / (trans_max - trans_min) - 1
     pose_windows[:,:,:3,3] = translations_normalised
-    # print(pose_windows[0])
     
     return pose_windows, time_windows
 
@@ -527,6 +468,8 @@ def load_one_and_split(traj, window_size, input_size, use_relative = False, use_
     if Danda == True:
         return pose_windows, time_windows # Split into subtrajectories but not input and target
 
+
+    # print(pose_windows[0])
     if use_relative:
         pose_windows, time_windows = to_relative(pose_windows, time_windows, input_size)
 
@@ -596,28 +539,33 @@ def train_custom(p_wins, t_wins, N=3, batch_size = 32):
     #     exit()
 
 
-def some_stats(past, future):
-    print(past.size())
-    # print(past[:,:,:,0].mean())
+def print_some_stats(future, future_rot=None, translation_dims=3):
+    future = future.squeeze(dim=1) #torch.Size([16106, 20, 3])
 
-    #left right
-    print((past[:,:,9,0]-past[:,:,0,0]).mean())
+    distance_per_step = future[:, 1:, :] - future[:, :-1, :]
+    abs_distance_per_step = torch.abs(distance_per_step)
+    total_distance_per_sample = abs_distance_per_step.sum(dim=1) #sum over time steps
 
-    #up down
-    print((past[:,:,9,1]-past[:,:,0,1]).mean())
 
-    #front back
-    print((past[:,:,9,2]-past[:,:,0,2]).mean())
+    mean_distance_x = total_distance_per_sample[:, 0].mean().item()
+    mean_distance_y = total_distance_per_sample[:, 1].mean().item()
+    if translation_dims == 3:
+        mean_distance_z = total_distance_per_sample[:, 2].mean().item()
+    
 
-    distance_total = future[:,:,-1,:]-future[:,:,0,:]
-    euclidean_dist = distance_total.norm(dim=-1)
+    step_euclidean = distance_per_step.norm(dim=2)
+    total_euclidean_distance = step_euclidean.sum(dim=1)
+    mean_euclidean_distance = total_euclidean_distance.mean().item()
 
-    #[FYI] Average Euclidean distance between start and end pose (20 timesteps): tensor(10.5206) << estimate using :2 (only using 0 already 10.4442, so up-down barely changes anything)
-    #[FYI] Average Euclidean distance between start and end pose (20 timesteps): tensor(18.9454)) << estimate using [0,2] (excl up down)
+    if translation_dims == 2:
+        print(f"Total x and y distances travelled: {mean_distance_x:.5f}, {mean_distance_y:.5f}")
+    elif translation_dims == 3:
+        print(f"Total x, y and z distances travelled: {mean_distance_x:.5f}, {mean_distance_y:.5f}, {mean_distance_z:.5f}")
 
-    #[FYI] Average Euclidean distance between start and end pose (20 timesteps): tensor(18.9611) << 3D
+    print(f"Euclidean dist diff avg: {mean_euclidean_distance:.5f}")
 
-    print("Average Euclidean distance between start and end pose (20 timesteps):", euclidean_dist.mean())
+    if future_rot is not None:
+        print('Still need to implement rotation statistics')
 
 
 
@@ -657,84 +605,50 @@ if __name__ == "__main__":
             break
 
     elif LED2D == True:
-
-        train_dataset = KITTIDatasetLeapfrog2D(input_size=10, preds_size=20, training=True, transform=None) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
+        train_dataset = KITTIDatasetLeapfrog(dims = 2, input_size=10, preds_size=20, training=True, relative=True, normalised=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
+        print_some_stats(train_dataset.fut_motion_3D, None, 2)
         print('Train trajectories:', len(train_dataset)) # 16106 for input_size=10, preds_size=20
         train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
 
-        test_dataset = KITTIDatasetLeapfrog2D(input_size=10, preds_size=20, training=False, transform=None)
+        test_dataset = KITTIDatasetLeapfrog(dims=2, input_size=10, preds_size=20, training=False, relative=True, normalised=False)
+        print_some_stats(train_dataset.fut_motion_3D, None, 2)
         print('Test trajectories:', len(test_dataset)) # 6776 for input_size=10, preds_size=20
         test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
-
-        for batch in train_loader:
-            #print(batch.keys())
-            print("\nBatch pre-motion shape:", batch['pre_motion_3D'].shape)  # [batch_size, 1, past_poses, 2]
-            print("Batch future motion shape:", batch['fut_motion_3D'].shape)  # [batch_size, 1, future_poses, 2]
-            print("Batch pre-motion mask shape:", batch['pre_motion_mask'].shape)  # [batch_size, 1, past_poses, 2]
-            print("Batch future motion mask shape:", batch['fut_motion_mask'].shape)  # [batch_size, 1, future_poses, 2]
-            print("traj_scale:", batch['traj_scale'])
-            print("pred_mask:", batch['pred_mask'])
-            print("seq:", batch['seq'])
-            exit()
-            break
 
     elif LED3D == True:
-
-        train_dataset = KITTIDatasetLeapfrog3D(input_size=10, preds_size=20, training=True, transform=None) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
-        print('Train trajectories:', len(train_dataset)) # 16106 for input_size=10, preds_size=20
-        #print(train_dataset.fut_motion_3D)
-        some_stats(train_dataset.pre_motion_3D, train_dataset.fut_motion_3D)
-        exit()
+        train_dataset = KITTIDatasetLeapfrog(dims=3, input_size=10, preds_size=20, training=True, relative=True, normalised=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
+        print_some_stats(train_dataset.fut_motion_3D)
+        print('Train trajectories:', len(train_dataset))
         train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
 
-        test_dataset = KITTIDatasetLeapfrog3D(input_size=10, preds_size=20, training=False, transform=None)
-        print('Test trajectories:', len(test_dataset)) # 6776 for input_size=10, preds_size=20
+        test_dataset = KITTIDatasetLeapfrog(dims=3, input_size=10, preds_size=20, training=False, relative=True, normalised=False)
+        print_some_stats(test_dataset.fut_motion_3D)
+        print('Test trajectories:', len(test_dataset)) 
         test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
-
-        for batch in train_loader:
-            # print(batch.keys())
-            print("\nBatch pre-motion shape:", batch['pre_motion_3D'].shape)  # [batch_size, 1, past_poses, 2]
-            print("Batch future motion shape:", batch['fut_motion_3D'].shape)  # [batch_size, 1, future_poses, 2]
-            print("Batch pre-motion mask shape:", batch['pre_motion_mask'].shape)  # [batch_size, 1, past_poses, 2]
-            print("Batch future motion mask shape:", batch['fut_motion_mask'].shape)  # [batch_size, 1, future_poses, 2]
-            print("traj_scale:", batch['traj_scale'])
-            print("pred_mask:", batch['pred_mask'])
-            print("seq:", batch['seq'])
-            exit()
-            break
 
     elif LED6D == True:
 
-        train_dataset = KITTIDatasetLeapfrog6D(input_size=10, preds_size=20, training=True, transform=None) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
-        print('Train trajectories:', len(train_dataset)) # 16106 for input_size=10, preds_size=20
-        #print(train_dataset.fut_motion_3D)
-        #some_stats(train_dataset.pre_motion_3D, train_dataset.fut_motion_3D)
+        train_dataset = KITTIDatasetLeapfrog(dims=6, input_size=10, preds_size=20, training=True, relative=True, normalised=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
+        print('Train trajectories:', len(train_dataset)) 
         train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
+        print_some_stats(train_dataset.fut_motion_3D[..., :3], train_dataset.fut_motion_3D[..., 3:], 3)
 
-        test_dataset = KITTIDatasetLeapfrog6D(input_size=10, preds_size=20, training=False, transform=None)
-        print('Test trajectories:', len(test_dataset)) # 6776 for input_size=10, preds_size=20
+        test_dataset = KITTIDatasetLeapfrog(dims=6, input_size=10, preds_size=20, training=False, relative=True, normalised=False)
+        print('Test trajectories:', len(test_dataset)) 
         test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
+        print_some_stats(test_dataset.fut_motion_3D[..., :3], test_dataset.fut_motion_3D[..., 3:], 3)
 
-        for batch in train_loader:
-            print(batch.keys())
-            print("\nBatch pre-motion shape:", batch['pre_motion_3D'].shape)  # [batch_size, 1, past_poses, 3]
-            print("Batch future motion shape:", batch['fut_motion_3D'].shape)  # [batch_size, 1, future_poses, 3]
-
-            print("Batch pre-motion lie rot shape:", batch['pre_motion_lie'].shape)  # [batch_size, 1, past_poses, 3]
-            print("Batch future motion lie rot shape:", batch['fut_motion_lie'].shape)  # [batch_size, 1, future_poses, 3]
-
-            print("Batch pre-motion mask shape:", batch['pre_motion_mask'].shape)  # [batch_size, 1, past_poses, 3]
-            print("Batch future motion mask shape:", batch['fut_motion_mask'].shape)  # [batch_size, 1, future_poses, 3]
-            print("traj_scale:", batch['traj_scale'])
-            print("pred_mask:", batch['pred_mask'])
-            print("seq:", batch['seq'])
-            exit()
-            break
-
-    # print(pose_input_wins.size()) #torch.Size([23069, 10, 3, 4])
-    # print(pose_target_wins.size()) #torch.Size([23069, 3, 3, 4])
-
-    #train_custom(p_wins, t_wins)
+    for batch in train_loader:
+        print(batch.keys())
+        print("\nBatch pre-motion shape:", batch['pre_motion_3D'].shape)  # [batch_size, 1, past_poses, 3]
+        print("Batch future motion shape:", batch['fut_motion_3D'].shape)  # [batch_size, 1, future_poses, 3]
+        print("Batch pre-motion mask shape:", batch['pre_motion_mask'].shape)  # [batch_size, 1, past_poses, 3]
+        print("Batch future motion mask shape:", batch['fut_motion_mask'].shape)  # [batch_size, 1, future_poses, 3]
+        print("traj_scale:", batch['traj_scale'])
+        print("pred_mask:", batch['pred_mask'])
+        print("seq:", batch['seq'])
+        exit()
+        break
 
 
 
@@ -792,3 +706,243 @@ def load_one_and_split(traj, window_size = 100): #single trajectory - load and s
     print(tchunks[0].shape)
 
 """
+
+class KITTIDatasetLeapfrog2D(Dataset): # corresponds to class NBADataset in dataloader_nba.py
+
+    """
+    Kitti dataset class compatible with leapfrog (LED) pipeline.
+
+    NOTE: Loads x y translation (original LED) only instead of full SE3 pose.
+    """
+
+    def __init__(self, input_size, preds_size, training, relative=False, normalised=False):
+        """
+        input_size (int): number of poses used as input (past trajectory)
+        preds_size (int): nr of poses to be predicted (future trajectory)
+        training (boolean): train or test set data
+        """
+
+        #TODO fixed seed random instead of fixed sequences for train and test
+        window_size = input_size+preds_size
+        if training ==True:
+            traj_list = ['00', '01', '02', '03', '04', '05', '06', '07']
+        else:
+            traj_list = ['08', '09', '10']
+
+        ### Load and split data from all KITTI trajectories
+        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size, relative, normalised)
+            # p_inputs: [num_windows, input_size, 3, 4]
+            # p_targets: [num_windows, window_size - input_size, 3, 4]
+
+
+        ### 1. Extract only x and y translation
+        self.pre_motion_2D = p_inputs[:, :, :2, 3]  # [num_windows, input_size, 2]
+        self.fut_motion_2D = p_targets[:, :, :2, 3]  # [num_windows, window_size - input_size, 2]
+
+
+        self.pre_motion_2D = p_inputs[:,:,[0,2],3] 
+        self.fut_motion_2D = p_targets[:, :, [0,2], 3]
+
+        ### 2. LED pipeline uses an extra dimension at index 1 for the number of agents
+        # We add this extra dimension and set it to 1 as Kitti is single-agent
+        self.pre_motion_3D = self.pre_motion_2D.unsqueeze(1) #[num_windows, 1, input_size, 2]
+        self.fut_motion_3D = self.fut_motion_2D.unsqueeze(1) #[num_windows, 1, (window_size - input_size), 2]
+
+        ### 3. Create masks (all 1s) matching the temporal dimensions
+        self.pre_motion_mask = torch.ones(self.pre_motion_3D.shape[0], 1, self.pre_motion_3D.shape[2])
+        self.fut_motion_mask = torch.ones(self.fut_motion_3D.shape[0], 1, self.fut_motion_3D.shape[2])
+
+
+    def __len__(self):
+        return self.pre_motion_3D.shape[0]
+
+    def __getitem__(self, idx):
+        sample = {
+            'pre_motion_3D': self.pre_motion_3D[idx],  # [1, input_size, 3, 4]
+            'fut_motion_3D': self.fut_motion_3D[idx],    # [1, target_length, 3, 4]
+            'pre_motion_mask': self.pre_motion_mask[idx],  # [1, input_size]
+            'fut_motion_mask': self.fut_motion_mask[idx],  # [1, target_length]
+        }
+
+        return sample
+
+class KITTIDatasetLeapfrog3D(Dataset): #Similar to class NBADataset in dataloader_nba.py
+
+    """
+    Kitti dataset class compatible with leapfrog (LED) pipeline.
+    NOTE: Loads x z y translation instead of full SE3 pose.
+    """
+
+    def __init__(self, input_size, preds_size, training, transform=None):
+        """
+        input_size (int): number of poses used as input (past trajectory)
+        preds_size (int): nr of poses to be predicted (future trajectory)
+        training (boolean): train or test set data
+        """
+
+        #TODO fixed seed random instead of fixed sequences for train and test
+        window_size = input_size+preds_size
+        if training ==True:
+            traj_list = ['00', '01', '02', '03', '04', '05', '06', '07']
+        else:
+            traj_list = ['08', '09', '10']
+
+        ### Load and split data from all KITTI trajectories
+        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size)
+            # p_inputs: [num_windows, input_size, 3, 4]
+            # p_targets: [num_windows, output_size, 3, 4]
+
+        ### 1. Extract x, z, y translation
+        self.pre_motion_2D = p_inputs[:, :, :3, 3]  # [num_windows, input_size, 3] << 3D adjustment
+        self.fut_motion_2D = p_targets[:, :, :3, 3]  # [num_windows, output_size, 3] << 3D adjustment
+
+        ### 2. LED pipeline uses an extra dimension at index 1 for the number of agents
+        # We add this extra dimension and set it to 1 as Kitti is single-agent
+        self.pre_motion_3D = self.pre_motion_2D.unsqueeze(1) #[num_windows, 1, input_size, 3]
+        self.fut_motion_3D = self.fut_motion_2D.unsqueeze(1) #[num_windows, 1, output_size, 3]
+        
+        
+
+        # print(self.pre_motion_3D.size())
+        # print(self.fut_motion_3D.size())
+
+        ### 3. Create masks (all 1s) matching the temporal dimensions
+        self.pre_motion_mask = torch.ones(self.pre_motion_3D.shape[0], 1, self.pre_motion_3D.shape[2])
+        self.fut_motion_mask = torch.ones(self.fut_motion_3D.shape[0], 1, self.fut_motion_3D.shape[2])
+
+        self.transform = transform #TODO use in the future for relative/normalised trajectories
+
+    def __len__(self):
+        return self.pre_motion_3D.shape[0]
+
+    def __getitem__(self, idx):
+        sample = {
+            'pre_motion_3D': self.pre_motion_3D[idx],  # [1, input_size, 3, 4]
+            'fut_motion_3D': self.fut_motion_3D[idx],    # [1, target_length, 3, 4]
+            'pre_motion_mask': self.pre_motion_mask[idx],  # [1, input_size]
+            'fut_motion_mask': self.fut_motion_mask[idx],  # [1, target_length]
+        }
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
+
+class KITTIDatasetLeapfrog6D(Dataset): #3D translation and 3D Lie algebra for rotation
+
+    """
+    Kitti dataset class compatible with leapfrog (LED) pipeline.
+    NOTE: Loads x z y translation (original LED) and Dual Quaternions: full SE3 pose.
+    """
+
+    def __init__(self, input_size, preds_size, training, relative=False, normalised=False, train_ratio=0.85, seed=42):
+        """
+        input_size (int): number of poses used as input (past trajectory)
+        preds_size (int): nr of poses to be predicted (future trajectory)
+        training (boolean): train or test set data
+        """
+
+        self.lie = Lie()
+        window_size = input_size+preds_size
+
+        # if training ==True: # uncomment to deactivate shuffling
+        #     traj_list = ['00', '01', '02', '03', '04', '05', '06', '07']
+        # else:
+        #     traj_list = ['08', '09', '10']
+
+        traj_list = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
+
+        ### Load and split data from all KITTI trajectories
+        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size, relative, normalised) # p_inputs: [num_windows, input_size, 3, 4] p_targets: [num_windows, output_size, 3, 4]
+        # print(f'Time diff avg (fut): {(t_targets[:,-1]-t_targets[:,0]).mean(dim=-1).item():.5f}')
+
+
+
+        ### 1.1. Extract x, z, y translation
+        trans_pre = p_inputs[:, :, :3, 3]  # [num_windows, input_size, 3] << 3D adjustment
+        trans_fut = p_targets[:, :, :3, 3]  # [num_windows, output_size, 3] << 3D adjustment
+        # print(trans_pre[0], '\n', trans_fut[0])
+
+
+        ### 1.2. Extract rotation and convert to Lie algebra (and make relative)
+        if relative:
+            rotations_pre, rotations_fut = to_relative_rotations(p_inputs, p_targets, input_size, self.lie)
+
+            # Now convert the relative rotation matrices into Lie algebra vectors.
+            num_windows, seq_len_pre, _, _ = rotations_pre.shape
+            num_windows_fut, seq_len_fut, _, _ = rotations_fut.shape
+            # lie_pre:  [num_windows, input_size, 3]
+            # lie_fut:  [num_windows, output_size, 3]
+        else:
+            #Convert absolute rotations (for each time step) to Lie algebra.
+            rotations_pre = p_inputs[:, :, :3, :3]  # [num_windows, input_size, 3, 3]
+            rotations_fut = p_targets[:, :, :3, :3]  # [num_windows, output_size, 3, 3]
+
+            num_windows, seq_len_pre = rotations_pre.shape[:2]
+            num_windows_fut, seq_len_fut = rotations_fut.shape[:2]
+
+
+        rotations_pre_flat = rotations_pre.reshape(-1, 3, 3)
+        lie_pre_flat = self.lie.SO3_to_so3(rotations_pre_flat)  # [N, 3]
+        lie_pre = lie_pre_flat.reshape(num_windows, seq_len_pre, 3)
+
+        rotations_fut_flat = rotations_fut.reshape(-1, 3, 3)
+        lie_fut_flat = self.lie.SO3_to_so3(rotations_fut_flat)
+        lie_fut = lie_fut_flat.reshape(num_windows_fut, seq_len_fut, 3)
+
+        # print(lie_pre[0])
+        # print(lie_fut[0])
+
+
+        ### 2. Concatenate translations and rotation and add agent dimension (1 for single-agent Kitti)
+        SE3_pre = torch.cat([trans_pre, lie_pre], dim=-1)
+        SE3_fut = torch.cat([trans_fut, lie_fut], dim=-1)
+        # print(SE3_pre[0], '\n', SE3_fut[0])
+
+
+        ### 3. Add agent dimension
+        all_pre = SE3_pre.unsqueeze(1)  # [num_windows, 1, input_size, 6]
+        all_fut = SE3_fut.unsqueeze(1)  # [num_windows, 1, output_size, 6]
+
+
+        ### 4. Create masks (all 1s) matching the temporal dimensions
+        all_pre_mask = torch.ones(all_pre.shape[0], 1, all_pre.shape[2])
+        all_fut_mask = torch.ones(all_fut.shape[0], 1, all_fut.shape[2])
+
+
+        # 5. Randomly split the windows using a fixed seed 
+        # selected_indices = list(range(all_pre.shape[0])) # uncomment to deactivate shuffling
+        total_windows = all_pre.shape[0]
+        # print(total_windows)
+        indices = list(range(total_windows))
+        random.seed(seed)
+        random.shuffle(indices)
+        split_idx = int(total_windows * train_ratio)
+
+        if training:
+            selected_indices = indices[:split_idx]
+        else:
+            selected_indices = indices[split_idx:]
+
+        # Subset data
+        self.pre_motion_3D = all_pre[selected_indices]
+        self.fut_motion_3D = all_fut[selected_indices]
+        self.pre_motion_mask = all_pre_mask[selected_indices]
+        self.fut_motion_mask = all_fut_mask[selected_indices]
+
+
+
+    def __len__(self):
+        return self.pre_motion_3D.shape[0]
+
+    def __getitem__(self, idx):
+        sample = {
+            'pre_motion_3D': self.pre_motion_3D[idx],  # [1, input_size, 3, 4]
+            'fut_motion_3D': self.fut_motion_3D[idx],    # [1, target_length, 3, 4]
+            # 'pre_motion_lie': self.pre_motion_lie[idx],    # [1, input_size, 3] Lie algebra representation of rots
+            # 'fut_motion_lie': self.fut_motion_lie[idx],    # [1, output_size, 3]
+            'pre_motion_mask': self.pre_motion_mask[idx],  # [1, input_size]
+            'fut_motion_mask': self.fut_motion_mask[idx],  # [1, target_length]
+        }
+
+        return sample
+
+
