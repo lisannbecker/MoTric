@@ -37,10 +37,8 @@ class LEDInitializer(nn.Module):
 	
 	def forward(self, x, mask=None):
 		'''
-		x: batch size, t_p, 6
-		past trajectory = x
+		x = past_trajectory: (B, past_size, 3*dims)	< 3*dims: absolute, relative, and velocity for all dimensions (incl rotations)
 		'''
-
 		mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
 
 		social_embed = self.social_encoder(x, mask)

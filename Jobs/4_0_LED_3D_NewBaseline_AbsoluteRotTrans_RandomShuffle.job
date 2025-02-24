@@ -2,11 +2,11 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=LED_6D
+#SBATCH --job-name=LED_3D_NewBaseline
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --time=2:20:00
-#SBATCH --output=4_6D_Dynamic_Experiments_output_%A.out
+#SBATCH --time=3:30:00
+#SBATCH --output=4_0_LED_3D_NewBaseline_AbsoluteRotTrans_RandomShuffle_output_%A.out
 
 
 source activate led
@@ -15,7 +15,7 @@ module load 2022
 module load CUDA/11.7.0
 
 cd $HOME/MoTric/4_LED_Kitti_6D_Dynamic/
-python main_led_nba.py --cfg 4_6D_Dynamic_Experiments --info 4_LED_Kitti_6D_Dynamic --dataset kitti
+python main_led_nba.py --cfg 4_0_LED_3D_NewBaseline_AbsoluteRotTrans_RandomShuffle --info 4_0_LED_3D_NewBaseline_AbsoluteRotTrans_RandomShuffle --dataset kitti
 
 
 # Same parameters as in 2_X and 3. Most comparable to 3 which uses 3D translation only
@@ -28,7 +28,7 @@ python main_led_nba.py --cfg 4_6D_Dynamic_Experiments --info 4_LED_Kitti_6D_Dyna
 # description                  : LED
 # results_root_dir             : results
 # dataset                      : kitti
-# dimensions                   : 6 #with Lie rotation
+# dimensions                   : 3 #with Lie rotation
 
 # # ------------------- Dataset -------------------------
 # past_frames                  : 15
@@ -41,8 +41,11 @@ python main_led_nba.py --cfg 4_6D_Dynamic_Experiments --info 4_LED_Kitti_6D_Dyna
 # # motion_dim                   : 3 #not used in code...
 # # forecast_dim                 : 3 #not used in code...
 
-# traj_mean                    : [14, 7.5] #middle of nba court
-# traj_scale                   : 5
+# traj_mean                    : [14, 7.5] #middle of nba court - not used
+# traj_scale                   : 1 # effectively not used
+
+# relative                     : False
+# normalised                   : False
 
 # # ------------------- Model -------------------------
 # pretrained_core_denoising_model: './results/checkpoints/base_diffusion_model.p'
@@ -59,9 +62,8 @@ python main_led_nba.py --cfg 4_6D_Dynamic_Experiments --info 4_LED_Kitti_6D_Dyna
 # lr                           : 5.e-3 #tenth of previous
 # train_batch_size             : 32
 # test_batch_size              : 32 #slows testing down a bit compared to default 500
-# num_epochs                   : 50
+# num_epochs                   : 70
 # test_interval                : 1  # Added: evaluate every N epochs
 # lr_scheduler                 : 'step'
 # decay_step                   : 8
-# decay_gamma                  : 0.7 #slightly lower learning rate decay
-
+# decay_gamma                  : 0.5 #slightly lower learning rate decay

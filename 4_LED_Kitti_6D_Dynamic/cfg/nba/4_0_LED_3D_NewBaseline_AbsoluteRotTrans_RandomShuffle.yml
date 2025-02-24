@@ -2,7 +2,7 @@
 description                  : LED
 results_root_dir             : results
 dataset                      : kitti
-dimensions                   : 6 #with Lie rotation
+dimensions                   : 3 #with Lie rotation
 
 # ------------------- Dataset -------------------------
 past_frames                  : 15
@@ -15,10 +15,10 @@ k_preds                      : 24 #currently has to be the same as future... int
 # motion_dim                   : 3 #not used in code...
 # forecast_dim                 : 3 #not used in code...
 
-traj_mean                    : [14, 7.5] #middle of nba court
-traj_scale                   : 5
+traj_mean                    : [14, 7.5] #middle of nba court - not used
+traj_scale                   : 5 # effectively not used
 
-relative                     : True
+relative                     : False
 normalised                   : False
 
 # ------------------- Model -------------------------
@@ -33,10 +33,10 @@ diffusion                    : {
 }
 
 # ------------------- Training Parameters -------------------------
-lr                           : 1.e-3 #tenth of previous
+lr                           : 5.e-3 #tenth of previous
 train_batch_size             : 32
 test_batch_size              : 32 #slows testing down a bit compared to default 500
-num_epochs                   : 60
+num_epochs                   : 70
 test_interval                : 1  # Added: evaluate every N epochs
 lr_scheduler                 : 'step'
 decay_step                   : 8

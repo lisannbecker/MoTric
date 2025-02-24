@@ -14,7 +14,7 @@
 1_LED_Backup_Kitti_Original_Params/visualization
 2_LED_Kitti_Dynamic_Params/visualization
 3_LED_Kitti_3D_Dynamic/visualization
-4_LED_Kitti_6D_Dynamic/visualization
+4_LED_Kitti_6D_Dynamic/visualization/data
 
 SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth.git
 

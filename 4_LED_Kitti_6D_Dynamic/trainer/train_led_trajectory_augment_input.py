@@ -7,10 +7,11 @@ import torch.nn.functional as F
 import random
 import numpy as np
 import torch.nn as nn
+from scipy.stats import gaussian_kde
+import matplotlib.pyplot as plt
 
 from utils.config import Config
 from utils.utils import print_log
-
 
 from torch.utils.data import DataLoader
 from data.dataloader_nba import NBADataset, seq_collate
@@ -383,20 +384,18 @@ class Trainer:
 		# print('traj_mask: ', traj_mask.size())
 		# Get last observed pose (for each agent) as initial position << both translation and rotation
 		initial_pos = data['pre_motion_3D'].cuda()[:, :, -1:] # 2D: [B, num_agents, 1, 2] or 3D: [B, num_agents, 1, 3] or 6D: [B, num_agents, 1, 6]
-		# print('initial_pos:', initial_pos.size()) 
-		
 
 		# augment input: absolute position, relative position, velocity
 		if self.cfg.dataset == 'kitti':
-			past_traj_abs = (data['pre_motion_3D'].cuda() / self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) #LB subtracting mean from absolute positions is not informative for kitti dataset
+			past_traj_abs = (data['pre_motion_3D'].cuda() / self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) #single agent: effectively only (B, 1, Past, Dims) > (B*1, Past, Dims)
 		elif self.cfg.dataset == 'nba':
 			past_traj_abs = ((data['pre_motion_3D'].cuda() - self.traj_mean)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) 
 		
-		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions)
-		past_traj_vel = torch.cat((past_traj_rel[:, 1:] - past_traj_rel[:, :-1], torch.zeros_like(past_traj_rel[:, -1:])), dim=1)
+		past_traj_rel = ((data['pre_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.past_frames, self.cfg.dimensions) #only relativises if initial pos is not 0 already (relative = True)
+		past_traj_vel = torch.cat((past_traj_rel[:, 1:] - past_traj_rel[:, :-1], torch.zeros_like(past_traj_rel[:, -1:])), dim=1) #(B, 1, Dim)
 		past_traj = torch.cat((past_traj_abs, past_traj_rel, past_traj_vel), dim=-1)
 
-		fut_traj = ((data['fut_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.future_frames, self.cfg.dimensions)
+		fut_traj = ((data['fut_motion_3D'].cuda() - initial_pos)/self.traj_scale).contiguous().view(-1, self.cfg.future_frames, self.cfg.dimensions) #relativises (if not done already) and (B, 1, Past, Dims) > (B*1, Past, Dims)
 
 		return batch_size, traj_mask, past_traj, fut_traj
 
@@ -463,6 +462,108 @@ class Trainer:
 		if future_rot is not None:
 			print('Still need to implement rotation statistics')
 	
+	def compute_motion_prior_kde(self, k_preds):
+		"""
+		Computes a KDE-based motion prior for each sample and each future time step.
+		
+		Args:
+			k_preds_np (np.array): Predicted trajectories of shape (B, K, T, Dim).
+								B: batch size, K: number of predictions, 
+								T: future timesteps, 6: pose dimensions.
+		
+		Returns:
+			priors: A list of lists such that priors[b][t] is a KDE object for sample b at time step t.
+		"""
+		k_preds_np = k_preds.detach().cpu().numpy()
+
+
+		B, K, T, D = k_preds_np.shape
+		# print(k_preds_np.shape)
+		priors = []
+		for b in range(B):
+			np.save('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PostTraining/first_k_preds.npy', k_preds_np)
+			# Option A: all Ks, all future poses
+			# print(k_preds_np[b, :, 23, :])
+			all_samples = k_preds_np[b].reshape(K * T, D)  # Merge all timesteps into one
+
+			# Fit KDE using all K*T samples
+			kde = gaussian_kde(all_samples.T)  
+
+			### VIS
+			# Create evaluation grid
+			x_grid, y_grid = np.mgrid[-4:20:100j, -4:7:100j]
+			grid_points = np.vstack([x_grid.ravel(), y_grid.ravel()])  # Shape (2, N)
+			kde_values = kde(grid_points).reshape(100, 100)  # Reshape into 2D
+
+			# Plot KDE as a contour plot
+			plt.figure(figsize=(10, 8))  # Larger canvas, less distortion
+			plt.contourf(x_grid, y_grid, kde_values, levels=50, cmap="viridis")
+			plt.scatter(all_samples[:, 0], all_samples[:, 1], s=3, alpha=1, label="Samples")
+			
+			# Add labels and colorbar
+			plt.xlabel("X Position")
+			plt.ylabel("Y Position")
+			plt.colorbar(label="Density")
+			plt.legend()
+
+			# Save the visualization
+			plt.savefig(f'/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PostTraining/Trajectory{b}_AllTimesteps.jpg')
+			plt.close()
+			# exit()
+
+
+			#All Ks, only one future pose
+			sample_priors = []
+			for t in range(T): # All k-preds for a specific timestep
+				samples = k_preds_np[b, :, t, :]  # shape: (K, Dimension)
+				# print(samples)
+				# Fit a KDE for these 2D/3D/6D samples.
+				kde = gaussian_kde(samples.T)  # gaussian_kde expects shape (D, N), 
+				# Kernel density estimation places a smooth "kernel" (Gaussian) at each sample point and sums them to create an overall density estimate
+				# Parameter: bandwidth = how smooothly the points are summed. Eg affects whether two close modes merge into one or not
+				sample_priors.append(kde)
+
+				### VIS
+				if D ==2:
+					# Create grid to evaluate KDE 
+					#x_grid, y_grid = np.mgrid[-4:4:100j, -4:4:100j]
+					x_grid, y_grid = np.mgrid[-4:20:100j, -4:7:100j]
+					grid_points = np.vstack([x_grid.ravel(), y_grid.ravel()])  # Shape (2, N)
+					kde_values = kde(grid_points).reshape(100, 100)  # Reshape into 2D
+
+					# Plot KDE as a contour plot
+					plt.figure(figsize=(10, 8)) 
+					plt.contourf(x_grid, y_grid, kde_values, levels=50, cmap="viridis")
+					plt.scatter(samples[:, 0], samples[:, 1], s=3, alpha=1, label="Samples")
+					
+					plt.xlabel("X Position")
+					plt.ylabel("Y Position")  
+					plt.colorbar(label="Density")
+					plt.legend()
+					#plt.show()
+					plt.savefig(f'/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PostTraining/Time{t}.jpg')
+					plt.close()
+					
+			priors.append(sample_priors)
+			exit()
+		return priors
+	
+	def evaluate_pose_prior(self, pose, kde): #not used yet
+		"""
+		Evaluate the probability density for a given 6D pose under the provided KDE.
+		
+		Args:
+			pose (np.array): 6D pose, shape (6,).
+			kde: A gaussian_kde object.
+		
+		Returns:
+			density (float): Estimated probability density at the pose.
+		"""
+		# gaussian_kde expects input shape (D, N); here N=1.
+		dims = pose.shape[0]
+		density = kde(pose.reshape(dims, 1))[0]
+		return density
+
 	def _train_single_epoch(self, epoch):
 		
 		self.model.train()
@@ -472,8 +573,15 @@ class Trainer:
 		
 		for data in self.train_loader:
 			# print("data['fut_motion_3D'].shape: ", data['fut_motion_3D'].shape)
-			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
+			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data) # past_traj =(past_traj_abs, past_traj_rel, past_traj_vel)
 
+			# first_traj_mask = traj_mask.detach().cpu().numpy()
+			# np.save('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_traj_mask.npy', first_traj_mask)
+			# first_past_traj = past_traj.detach().cpu().numpy()
+			# np.save('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_past_traj.npy', first_past_traj)			
+			# first_fut_traj= fut_traj.detach().cpu().numpy()
+			# np.save('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_fut_traj.npy', first_fut_traj)
+			
 			# print('traj_mask:', traj_mask.size()) # [32, 32]
 			# print('past_traj:', past_traj.size()) # [32, 15, 9] 
 			# print('fut_traj:', fut_traj.size()) # [32, 8, 3] < GT poses for future_frames timesteps
@@ -499,8 +607,11 @@ class Trainer:
 
 			# Generate K alternative future trajectories - multi-modal
 			k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #(B, K, T, 6)
+
+			self.compute_motion_prior_kde(k_alternative_preds)
 			# print(k_alternative_preds.size())
 			# print(k_alternative_preds[0])
+
 			### 3D/2D code
 			if self.cfg.dimensions in [2,3]:
 				#squared distances / Euclidian, equal weight for all timesteps
@@ -541,6 +652,7 @@ class Trainer:
 
 				loss_translation = (trans_error * self.temporal_reweight).mean(dim=-1)	# (B, K) loss for all k preds
 				
+				# print(loss_translation)
 				### (2) ROTATION LOSS (Geodesic)
 				#(original) squared distances / Euclidian, equal weight for all timesteps
 				# loss_dist = (	(generated_y - fut_traj_wpreds).norm(p=2, dim=-1) 
@@ -577,7 +689,7 @@ class Trainer:
 				# Clamp to avoid numerical issues
 				angular_error_theta = torch.acos(torch.clamp((trace - 1) / 2, -1 + 1e-6, 1 - 1e-6))  # (B, K, T) take arccosine to get error angle cos(theta) = trace(R)-1 / 2 with clamping -1 + 1e-6, 1 - 1e-6
 				loss_rotation = angular_error_theta.mean(dim=-1)  # average over time, so one loss per candidate K, shape (B, K)
-			
+				# print(loss_rotation)
 				### (1+2) COMBINED DISTANCE LOSS (ROT AND TRANS)
 				combined_error = loss_translation + loss_rotation  # (B, K) add translation and rotation error
 				loss_distance = combined_error.min(dim=1)[0].mean()  # some scalar << for whole batch, choose k_pred with lowest error, then average the error into one distance loss scalar
@@ -589,12 +701,14 @@ class Trainer:
 					(k_alternative_preds - fut_traj_wpreds).norm(p=2, dim=-1).mean(dim=(1, 2)) + 
 					variance_estimation
 				).mean()
+				# print(loss_uncertainty)
 			
 			
 			### TOTAL LOSS
 			"""2D/3D/6D code continues here"""
 			loss = loss_distance * 50 + loss_uncertainty #make distance loss more important than uncertainty loss (?) TODO maybe not this much
-
+			# print(loss)
+			# exit()
 			loss_total += loss.item()
 			loss_dt += loss_distance.item()*50
 			loss_dc += loss_uncertainty.item()
@@ -632,7 +746,6 @@ class Trainer:
 			for data in self.test_loader:
 				batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
 
-
 				# LED initializer outputs
 				sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
 				sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
@@ -668,7 +781,6 @@ class Trainer:
 				count += 1
 			
 		return performance, samples
-
 
 	def save_data(self):
 		'''
@@ -707,21 +819,38 @@ class Trainer:
 
 				raise ValueError
 
-
 	def test_single_model(self):
-		model_path = './results/checkpoints/led_new.p'
+		model_path = './results/checkpoints/4_00_2D_model_0021.p'
 		model_dict = torch.load(model_path, map_location=torch.device('cpu'))['model_initializer_dict']
 		self.model_initializer.load_state_dict(model_dict)
 		performance = { 'FDE': [0, 0, 0, 0],
 						'ADE': [0, 0, 0, 0]}
 		samples = 0
 		print_log(model_path, log=self.log)
+
 		def prepare_seed(rand_seed):
 			np.random.seed(rand_seed)
 			random.seed(rand_seed)
 			torch.manual_seed(rand_seed)
 			torch.cuda.manual_seed_all(rand_seed)
 		prepare_seed(0)
+
+		### LB Prediction for single trajecotory
+		past_traj = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_past_traj.npy')).to(self.device)
+		traj_mask = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_traj_mask.npy')).to(self.device)
+		fut_traj = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_fut_traj.npy')).to(self.device)
+
+		sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
+		sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
+		loc = sample_prediction + mean_estimation[:, None]
+		
+		pred_traj = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
+		self.compute_motion_prior_kde(pred_traj)
+		exit()
+
+
+
+		### Regular code
 		count = 0
 		with torch.no_grad():
 			for data in self.test_loader:
@@ -749,4 +878,3 @@ class Trainer:
 			print_log('--ADE({}s): {:.4f}\t--FDE({}s): {:.4f}'.format(time_i+1, performance['ADE'][time_i]/samples, \
 				time_i+1, performance['FDE'][time_i]/samples), log=self.log)
 		
-	
