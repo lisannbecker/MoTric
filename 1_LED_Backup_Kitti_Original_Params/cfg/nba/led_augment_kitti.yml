@@ -1,7 +1,7 @@
 # ------------------- General Options -------------------------
 description                  : LED
 results_root_dir             : results
-dataset                      : nba
+dataset                      : kitti
 
 # ------------------- Dataset -------------------------
 past_frames                  : 10

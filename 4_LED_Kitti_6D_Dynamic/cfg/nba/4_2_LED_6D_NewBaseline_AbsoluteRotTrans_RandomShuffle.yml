@@ -6,19 +6,19 @@ dimensions                   : 6 #with Lie rotation
 
 # ------------------- Dataset -------------------------
 past_frames                  : 15
-future_frames                : 24 #25 doesnt work for some reason
+future_frames                : 25 #25 doesnt work for some reason
 min_past_frames              : 15
-min_future_frames            : 24
+min_future_frames            : 25
 
-k_preds                      : 24 #currently has to be the same as future... intended?
+k_preds                      : 25 #currently has to be the same as future... intended?
 
 # motion_dim                   : 3 #not used in code...
 # forecast_dim                 : 3 #not used in code...
 
 traj_mean                    : [14, 7.5] #middle of nba court - not used
-traj_scale                   : 1 # effectively not used
+traj_scale                   : 5 # effectively not used
 
-relative                     : True
+relative                     : False
 normalised                   : False
 
 # ------------------- Model -------------------------
@@ -36,7 +36,7 @@ diffusion                    : {
 lr                           : 5.e-3 #tenth of previous
 train_batch_size             : 32
 test_batch_size              : 32 #slows testing down a bit compared to default 500
-num_epochs                   : 80
+num_epochs                   : 70
 test_interval                : 1  # Added: evaluate every N epochs
 lr_scheduler                 : 'step'
 decay_step                   : 8

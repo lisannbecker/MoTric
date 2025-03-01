@@ -3,18 +3,22 @@
 2_LED_Kitti_Dynamic_Params/results
 3_LED_Kitti_3D_Dynamic/results
 4_LED_Kitti_6D_Dynamic/results
+5_LED_Kitti_BetterCheckpoints/results
 
 0_LED_Backup/data
 1_LED_Backup_Kitti_Original_Params/data
 2_LED_Kitti_Dynamic_Params/data
 3_LED_Kitti_3D_Dynamic/data
 4_LED_Kitti_6D_Dynamic/data
+5_LED_Kitti_BetterCheckpoints/data
+
 
 0_LED_Backup/visualization
 1_LED_Backup_Kitti_Original_Params/visualization
 2_LED_Kitti_Dynamic_Params/visualization
 3_LED_Kitti_3D_Dynamic/visualization
 4_LED_Kitti_6D_Dynamic/visualization/data
+5_LED_Kitti_BetterCheckpoints/visualization/data
 
 SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth.git
 

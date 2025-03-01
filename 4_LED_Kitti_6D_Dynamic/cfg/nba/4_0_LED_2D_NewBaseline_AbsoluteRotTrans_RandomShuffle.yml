@@ -2,15 +2,15 @@
 description                  : LED
 results_root_dir             : results
 dataset                      : kitti
-dimensions                   : 3 #with Lie rotation
+dimensions                   : 2 #with Lie rotation
 
 # ------------------- Dataset -------------------------
 past_frames                  : 15
-future_frames                : 24 #25 doesnt work for some reason
+future_frames                : 25 #25 doesnt work for some reason
 min_past_frames              : 15
-min_future_frames            : 24
+min_future_frames            : 25
 
-k_preds                      : 24 #currently has to be the same as future... intended?
+k_preds                      : 25 #currently has to be the same as future... intended?
 
 # motion_dim                   : 3 #not used in code...
 # forecast_dim                 : 3 #not used in code...

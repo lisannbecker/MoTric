@@ -15,7 +15,7 @@ from data.dataloader_nba import NBADataset, seq_collate
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) #LoaderKitti is two levels up
-from LoaderKitti import KITTIDatasetLeapfrog2D, seq_collate_kitti
+from LoaderKitti import KITTIDatasetLeapfrog, seq_collate_kitti
 
 
 from models.model_led_initializer import LEDInitializer as InitializationModel
@@ -41,7 +41,8 @@ class Trainer:
 
 		if self.cfg.dataset.lower() == 'kitti':
 			print("KITTI dataset (1 agent).")
-			train_dset = KITTIDatasetLeapfrog2D(
+			train_dset = KITTIDatasetLeapfrog(
+				dims=2,
 				input_size=self.cfg.past_frames,
 				preds_size=self.cfg.future_frames,
 				training=True
@@ -54,7 +55,8 @@ class Trainer:
 				collate_fn=seq_collate_kitti,
 				pin_memory=True
 			)
-			test_dset = KITTIDatasetLeapfrog2D(
+			test_dset = KITTIDatasetLeapfrog(
+				dims=2,
 				input_size=self.cfg.past_frames,
 				preds_size=self.cfg.future_frames,
 				training=False
@@ -508,7 +510,7 @@ class Trainer:
 
 
 	def test_single_model(self):
-		model_path = './results/checkpoints/led_new.p'
+		model_path = './results/checkpoints/model_0060.p'
 		model_dict = torch.load(model_path, map_location=torch.device('cpu'))['model_initializer_dict']
 		self.model_initializer.load_state_dict(model_dict)
 		performance = { 'FDE': [0, 0, 0, 0],

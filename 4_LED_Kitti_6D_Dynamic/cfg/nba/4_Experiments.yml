@@ -1,24 +1,24 @@
 # ------------------- General Options -------------------------
 description                  : LED
 results_root_dir             : results
-dataset                      : kitti
+dataset                      : nba
 dimensions                   : 2 #with Lie rotation
 
 # ------------------- Dataset -------------------------
-past_frames                  : 15
-future_frames                : 24 #25 doesnt work for some reason
-min_past_frames              : 15
-min_future_frames            : 24
+past_frames                  : 10
+future_frames                : 20 #25 doesnt work for some reason
+min_past_frames              : 10
+min_future_frames            : 20
 
-k_preds                      : 24 #currently has to be the same as future... intended?
+k_preds                      : 20 #currently has to be the same as future... intended?
 
 # motion_dim                   : 3 #not used in code...
 # forecast_dim                 : 3 #not used in code...
 
 traj_mean                    : [14, 7.5] #middle of nba court
-traj_scale                   : 1 # effectively not used
+traj_scale                   : 5 # effectively not used
 
-relative                     : True
+relative                     : False
 normalised                   : False
 
 # ------------------- Model -------------------------

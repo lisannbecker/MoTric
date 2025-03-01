@@ -79,66 +79,106 @@ class Trainer:
 			collate_fn = seq_collate_kitti
 			print("[INFO] KITTI dataset (1 agent).")
 
-			train_dset = dataloader_class(
-				dims=self.cfg.dimensions,
-				input_size=self.cfg.past_frames,
-				preds_size=self.cfg.future_frames,
-				training=True,
-				relative=self.cfg.relative, 
-				normalised=self.cfg.normalised, 
-				train_ratio=0.85,
-				seed=42,
-				overlapping = False
-			)
-			self.train_loader = DataLoader(
-				train_dset,
-				batch_size=self.cfg.train_batch_size,
-				shuffle=True,
-				num_workers=4,
-				collate_fn=collate_fn,
-				pin_memory=True
-			)
+			if config.train == 1:
+				train_dset = dataloader_class(
+					dims=self.cfg.dimensions,
+					input_size=self.cfg.past_frames,
+					preds_size=self.cfg.future_frames,
+					training=True,
+					final_eval=False,
+					relative=self.cfg.relative, 
+					normalised=self.cfg.normalised, 
+					train_ratio=0.80,
+					eval_ratio=0.10,
+					seed=42,
+					overlapping = False
+				)
+				self.train_loader = DataLoader(
+					train_dset,
+					batch_size=self.cfg.train_batch_size,
+					shuffle=True,
+					num_workers=4,
+					collate_fn=collate_fn,
+					pin_memory=True
+				)
 
-			test_dset = dataloader_class(
-				dims=self.cfg.dimensions,
-				input_size=self.cfg.past_frames,
-				preds_size=self.cfg.future_frames,
-				training=False,
-				relative=self.cfg.relative, 
-				normalised=self.cfg.normalised, 
-				train_ratio=0.85,
-				seed=42,
-				overlapping = False
-			)
-			self.test_loader = DataLoader(
-				test_dset,
-				batch_size=self.cfg.test_batch_size,
-				shuffle=False,
-				num_workers=4,
-				collate_fn=collate_fn,
-				pin_memory=True
-			)
-			print('[INFO] Now using random trajectory shuffling.\n')
+				test_dset = dataloader_class(
+					dims=self.cfg.dimensions,
+					input_size=self.cfg.past_frames,
+					preds_size=self.cfg.future_frames,
+					training=False,
+					final_eval=False,
+					relative=self.cfg.relative, 
+					normalised=self.cfg.normalised, 
+					train_ratio=0.80,
+					eval_ratio=0.10,
+					seed=42,
+					overlapping = False
+				)
+				self.test_loader = DataLoader(
+					test_dset,
+					batch_size=self.cfg.test_batch_size,
+					shuffle=False,
+					num_workers=4,
+					collate_fn=collate_fn,
+					pin_memory=True
+				)
+				print('[INFO] Now using random trajectory shuffling.\n')
 		
-			### Stats about trajectories
-			if self.cfg.dimensions == 2:
-				print("Train dataset:")
-				self.print_some_stats(train_dset.fut_motion_3D, None, 2)
-				print("\nTest dataset:")
-				self.print_some_stats(test_dset.fut_motion_3D, None, 2)
+				### Stats about trajectories
+				if self.cfg.dimensions == 2:
+					print("Train dataset:")
+					self.print_some_stats(train_dset.fut_motion_3D, None, 2)
+					print("\nTest dataset:")
+					self.print_some_stats(test_dset.fut_motion_3D, None, 2)
 
-			elif self.cfg.dimensions == 3:
-				print("Train dataset:")
-				self.print_some_stats(train_dset.fut_motion_3D, None, 3)
-				print("\nTest dataset:")
-				self.print_some_stats(test_dset.fut_motion_3D, None, 3)
+				elif self.cfg.dimensions == 3:
+					print("Train dataset:")
+					self.print_some_stats(train_dset.fut_motion_3D, None, 3)
+					print("\nTest dataset:")
+					self.print_some_stats(test_dset.fut_motion_3D, None, 3)
+				
+				elif self.cfg.dimensions == 6:
+					print("Train dataset:")
+					self.print_some_stats(train_dset.fut_motion_3D[..., :3], train_dset.fut_motion_3D[..., 3:], 3)
+					print("\nTest dataset:")
+					self.print_some_stats(test_dset.fut_motion_3D[..., :3], train_dset.fut_motion_3D[..., 3:], 3)
 			
-			elif self.cfg.dimensions == 6:
-				print("Train dataset:")
-				self.print_some_stats(train_dset.fut_motion_3D[..., :3], train_dset.fut_motion_3D[..., 3:], 3)
-				print("\nTest dataset:")
-				self.print_some_stats(test_dset.fut_motion_3D[..., :3], train_dset.fut_motion_3D[..., 3:], 3)
+			elif config.train==0:
+				test_dset = dataloader_class(
+					dims=self.cfg.dimensions,
+					input_size=self.cfg.past_frames,
+					preds_size=self.cfg.future_frames,
+					training=False,
+					final_eval=True,
+					relative=self.cfg.relative, 
+					normalised=self.cfg.normalised, 
+					train_ratio=0.80,
+					eval_ratio=0.10,
+					seed=42,
+					overlapping = False
+				)
+				self.test_loader = DataLoader(
+					test_dset,
+					batch_size=self.cfg.test_batch_size,
+					shuffle=False,
+					num_workers=4,
+					collate_fn=collate_fn,
+					pin_memory=True
+				)
 
+								### Stats about trajectories
+				if self.cfg.dimensions == 2:
+					print("\nTest dataset (model evaluation):")
+					self.print_some_stats(test_dset.fut_motion_3D, None, 2)
+
+				elif self.cfg.dimensions == 3:
+					print("\nTest dataset (model evaluation):")
+					self.print_some_stats(test_dset.fut_motion_3D, None, 3)
+				
+				elif self.cfg.dimensions == 6:
+					print("\nTest dataset (model evaluation):")
+					self.print_some_stats(test_dset.fut_motion_3D[..., :3], train_dset.fut_motion_3D[..., 3:], 3)
 
 			if self.cfg.future_frames < 20:
 				print(f"[Warning] Only {self.cfg.future_frames} future timesteps available, "
@@ -178,7 +218,10 @@ class Trainer:
 
 
 		# ------------------------- define models -------------------------
-		self.model = CoreDenoisingModel(t_h=self.cfg.past_frames,d_f=self.cfg.dimensions).cuda()
+		self.model = CoreDenoisingModel(
+			t_h=self.cfg.past_frames,
+			d_f=self.cfg.dimensions
+		).cuda()
 
 		if self.cfg.past_frames == 10 and self.cfg.future_frames == 20 and self.cfg.dataset == 'nba':
 			# load pretrained models 
@@ -186,16 +229,29 @@ class Trainer:
 			model_cp = torch.load(self.cfg.pretrained_core_denoising_model, map_location='cpu') #LB expects 60 dimensional input (6 x 10 past poses)
 			self.model.load_state_dict(model_cp['model_dict'])
 
-			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=self.cfg.dimensions*3, t_f=self.cfg.future_frames, d_f=self.cfg.dimensions, k_pred=self.cfg.k_preds).cuda()
+			self.model_initializer = InitializationModel(
+				t_h=self.cfg.past_frames, 
+				d_h=self.cfg.dimensions*3, 
+				t_f=self.cfg.future_frames, 
+				d_f=self.cfg.dimensions, 
+				k_pred=self.cfg.k_preds
+			).cuda()
 		
 		else:
 			print('[INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)\n')
 			# print('Params for model_initialiser: ', self.cfg.past_frames, self.cfg.dimensions*3, self.cfg.future_frames, self.cfg.dimensions, self.cfg.k_preds)
-			self.model_initializer = InitializationModel(t_h=self.cfg.past_frames, d_h=self.cfg.dimensions*3, t_f=self.cfg.future_frames, d_f=self.cfg.dimensions, k_pred=self.cfg.k_preds).cuda()
+			self.model_initializer = InitializationModel(
+				t_h=self.cfg.past_frames, 
+				d_h=self.cfg.dimensions*3, 
+				t_f=self.cfg.future_frames, 
+				d_f=self.cfg.dimensions, 
+				k_pred=self.cfg.k_preds
+			).cuda()
 
 		self.opt = torch.optim.AdamW(self.model_initializer.parameters(), lr=config.learning_rate)
 		self.scheduler_model = torch.optim.lr_scheduler.StepLR(self.opt, step_size=self.cfg.decay_step, gamma=self.cfg.decay_gamma)
 		
+
 		# ------------------------- prepare logs -------------------------
 		self.log = open(os.path.join(self.cfg.log_dir, 'log.txt'), 'a+')
 		self.print_model_param(self.model, name='Core Denoising Model')
@@ -208,7 +264,35 @@ class Trainer:
 		#self.temporal_reweight = torch.FloatTensor([21 - i for i in range(1, 21)]).cuda().unsqueeze(0).unsqueeze(0) / 10
 		self.temporal_reweight = torch.FloatTensor([self.cfg.future_frames - i for i in range(1, self.cfg.future_frames + 1)]).cuda().unsqueeze(0).unsqueeze(0) / 10
 
+	def save_checkpoint(self, epoch):
+		"""
+        Save a checkpoint containing both core denoising model (original) and
+        the initialization model, along with optimizer and scheduler states
+        """
+		checkpoint = {
+			'epoch': epoch,
+			'cfg': self.cfg.yml_dict,
+			'model_initializer_state_dict': self.model_initializer.state_dict(),
+			'core_denoising_model_state_dict': self.model.state_dict(),
+			'optimizer_state_dict': self.opt.state_dict(),
+			'scheduler_state_dict': self.scheduler_model.state_dict(),
+		}
+		checkpoint_dir = f'./{self.cfg.model_dir}'
+		os.makedirs(checkpoint_dir, exist_ok=True)
+		ckpt_path = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth')
+		torch.save(checkpoint, ckpt_path)
+		print_log(f"[INFO] Checkpoint saved to {ckpt_path}", self.log)
 
+	def load_checkpoint(self, checkpoint_path):
+		"""
+		Load a checkpoint and restore model, optimizer, and scheduler states.
+		"""
+		checkpoint = torch.load(checkpoint_path, map_location=self.device)
+		self.model_initializer.load_state_dict(checkpoint['model_initializer_state_dict'])
+		self.model.load_state_dict(checkpoint['core_denoising_model_state_dict'])
+		self.opt.load_state_dict(checkpoint['optimizer_state_dict'])
+		self.scheduler_model.load_state_dict(checkpoint['scheduler_state_dict'])
+		print_log(f"[INFO] Checkpoint loaded from {checkpoint_path}", self.log)
 
 	def print_model_param(self, model: nn.Module, name: str = 'Model') -> None:
 		'''
@@ -376,15 +460,16 @@ class Trainer:
 					epoch, loss_total, loss_trans, loss_rot, loss_distance, loss_uncertainty), self.log)
 
 
-			if (epoch + 1) % self.cfg.test_interval == 0: #TODO have a look here
+			if (epoch + 1) % self.cfg.test_interval == 0:
 				performance, samples= self._test_single_epoch() #average_euclidean = average total distance start to finish - to contextualise how good the FDE and ADE are
 				for i, time_i in enumerate(range(5,21,5)):
 					print_log('--ADE ({} time steps): {:.4f}\t--FDE ({} time steps): {:.4f}'.format(
 						time_i, performance['ADE'][i]/samples,
 						time_i, performance['FDE'][i]/samples), self.log)
-				cp_path = self.cfg.model_path % (epoch + 1)
-				model_cp = {'model_initializer_dict': self.model_initializer.state_dict()}
-				torch.save(model_cp, cp_path)
+				# cp_path = self.cfg.model_path % (epoch + 1)
+				# model_cp = {'model_initializer_dict': self.model_initializer.state_dict()}
+				# torch.save(model_cp, cp_path)
+				self.save_checkpoint(epoch + 1)
 
 			self.scheduler_model.step()
 
@@ -426,6 +511,7 @@ class Trainer:
 
 		return batch_size, traj_mask, past_traj, fut_traj
 
+
 	def skew_symmetric(self,w):
 		w0,w1,w2 = w.unbind(dim=-1)
 		O = torch.zeros_like(w0)
@@ -460,6 +546,7 @@ class Trainer:
 		B = self.taylor_B(theta)
 		R = I+A*wx+B*wx@wx
 		return R
+
 
 	def print_some_stats(self, future, future_rot=None, translation_dims=3):
 		print('Length:', future.size(0))
@@ -573,11 +660,10 @@ class Trainer:
 					plt.close()
 					
 			priors.append(sample_priors)
-			exit()
 		return priors
 	
 
-	def visualise_single_KDE_GT_Past(self, k_preds_at_t, t_kde, all_past, GT_at_t): #TODO make size dynamic
+	def visualise_single_KDE_GT_Past(self, k_preds_at_t, t_kde, all_past, GT_at_t, traj_idx): #TODO make size dynamic
 		k_preds_at_t = k_preds_at_t.cpu().numpy()
 		all_past = all_past.cpu().numpy()
 		GT_at_t = GT_at_t.cpu().numpy()
@@ -617,7 +703,9 @@ class Trainer:
 		plt.colorbar(label="Density")
 		plt.legend()
 		#plt.show()
-		plt.savefig(f'/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/Sanity.jpg')
+		vis_path = f'./visualization/Sanity_{traj_idx}.jpg'
+		plt.savefig(vis_path)
+		print(f'[INFO] Visualisation saved to {vis_path}')
 		plt.close()
 
 	def visualise_kpreds_KDE(self, k_preds_at_t, t_kde):
@@ -754,7 +842,7 @@ class Trainer:
 			# Generate K alternative future trajectories - multi-modal
 			k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #(B, K, T, 6)
 
-			priors = self.compute_batch_motion_priors_kde(k_alternative_preds) 	#dictionary keys: traj index within batch (0-31); 
+#			priors = self.compute_batch_motion_priors_kde(k_alternative_preds) 	#dictionary keys: traj index within batch (0-31); 
 																				#lists: one KDE per predicted time step pose (e.g. 24 KDE's for all poses)
 			
 			### motion prior during training (bad first, should get better)
@@ -978,21 +1066,31 @@ class Trainer:
 
 				raise ValueError
 
-	def test_single_model(self):
-		model_path = './results/checkpoints/2D_model_0069_1040.p'
-		model_dict = torch.load(model_path, map_location=torch.device('cpu'))['model_initializer_dict']
-		self.model_initializer.load_state_dict(model_dict)
+	def test_single_model(self, checkpoint_path = None):
+		checkpoint_path = './results/5_Experiments/checkpoint_rework/models/checkpoint_epoch_40.pth'
+		# model_path = './results/checkpoints/2D_model_0069_1040.p' # Original code
+		# model_dict = torch.load(model_path, map_location=torch.device('cpu'))['model_initializer_dict']
+		# self.model_initializer.load_state_dict(model_dict)
+
+		if checkpoint_path is not None:
+			self.load_checkpoint(checkpoint_path)
+
+		# Set models to evaluation mode
+		self.model.eval()
+		self.model_initializer.eval()
+		# predictions = []
 		performance = { 'FDE': [0, 0, 0, 0],
 						'ADE': [0, 0, 0, 0]}
-		samples = 0
-		print_log(model_path, log=self.log)
+		samples, count = 0, 0
+		#print_log(model_path, log=self.log)
 
+		# Ensure reproducibility for testing
 		def prepare_seed(rand_seed):
 			np.random.seed(rand_seed)
 			random.seed(rand_seed)
 			torch.manual_seed(rand_seed)
 			torch.cuda.manual_seed_all(rand_seed)
-		prepare_seed(0)
+		prepare_seed(42)
 
 		### LB Prediction for single trajecotory
 		# with torch.no_grad():
@@ -1032,59 +1130,65 @@ class Trainer:
 
 
 		### Regular code
-		count = 0
 		with torch.no_grad():
 			for data in self.test_loader:
 				batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
 				# print(past_traj.size())
 				# print(past_traj[0, :, :])
-				# exit()
+
+
+				# Generate initial predictions using the initializer model
 				sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
 				sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
 				loc = sample_prediction + mean_estimation[:, None]
 			
+				# Generate the refined trajectory via the diffusion process
 				k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
+				# predictions.append(k_alternative_preds.cpu())
 				# print(past_traj[0])
-				# print(k_alternative_preds[0,0])
-				# print(fut_traj[0])
+				# print(k_alternative_preds.size())  # (B, K, T, 2)
+				# print(fut_traj.size()) # (B, T, 2)
+
+				# print(k_alternative_preds[10,:, -1, :])
+				# print(fut_traj[10, -1]) 
 				# exit()
 				
 				### motion prior
-				# priors = self.compute_batch_motion_priors_kde(k_alternative_preds) 	#dictionary keys: traj index within batch (0-31); 
+				priors = self.compute_batch_motion_priors_kde(k_alternative_preds) 	#dictionary keys: traj index within batch (0-31); 
 				# 																#lists: one KDE per predicted time step pose (e.g. 24 KDE's for all poses)
 				# # (B, K, T, 2)
-				# first_GT_pose = fut_traj[10, 0, :]
-				# first_pose_KDE = priors[10][0] # KDE based on all k_preds for the pose
-				# first_pose_all_ks = k_alternative_preds[10, :, 0, :]
+				for traj_idx in range(batch_size):
+					single_pose_GT = fut_traj[traj_idx, 0, :]
+					single_pose_KDE = priors[traj_idx][0] # KDE based on all k_preds for the pose
+					single_pose_all_ks = k_alternative_preds[traj_idx, :, 0, :]
+					single_pose_past = past_traj[traj_idx, :, 2:4] #2:4 are relative poses - first two channels of past are absolute traj, then relative, then velocities
+					
+					self.visualise_single_KDE_GT_Past(single_pose_all_ks, single_pose_KDE, single_pose_past, single_pose_GT, traj_idx) 
 				
-				# print(first_GT_pose)
-				# print(first_pose_KDE)
-				# print(first_pose_all_ks)
-				# print(first_pose_all_ks.size())
-				
-				# self.visualise_single_KDE_GT_Past(first_pose_all_ks, first_pose_KDE, past_traj[10, :, :2], first_GT_pose) #first two channels of past are absolute traj, then relative, then velocities
-				
-				# #Probability density
-				# first_GT_pose_np = first_GT_pose.detach().cpu().numpy().reshape(-1, 1)
-				# density = first_pose_KDE(first_GT_pose_np)[0]
-				# print(f"Probability Density of GT final pose: {density}")
-				# exit()
+					# #Probability density
+					first_GT_pose_np = single_pose_GT.detach().cpu().numpy().reshape(-1, 1)
+					density = single_pose_KDE(first_GT_pose_np)[0]
+					print(f"Probability Density of GT pose: {density}")
+				exit()
 				###
 
 				### Regular code continues
 				fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.future_frames, 1, 1)
 				# b*n, K, T, 2
 				distances = torch.norm(fut_traj - k_alternative_preds, dim=-1) * self.traj_scale
+
 				for time_i in range(1, 5):
 					ade = (distances[:, :, :5*time_i]).mean(dim=-1).min(dim=-1)[0].sum()
 					fde = (distances[:, :, 5*time_i-1]).min(dim=-1)[0].sum()
 					performance['ADE'][time_i-1] += ade.item()
 					performance['FDE'][time_i-1] += fde.item()
+
 				samples += distances.shape[0]
 				count += 1
 					# if count==2:
 					# 	break
+
 		for time_i in range(4):
-			print_log('--ADE({}s): {:.4f}\t--FDE({}s): {:.4f}'.format(time_i+1, performance['ADE'][time_i]/samples, \
+			print_log('--ADE ({} time steps): {:.4f}\t--FDE ({} time steps): {:.4f}'.format(time_i+1, performance['ADE'][time_i]/samples, \
 				time_i+1, performance['FDE'][time_i]/samples), log=self.log)
 		

@@ -5,8 +5,8 @@
 #SBATCH --job-name=LED_2D_NewBaseline
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --time=3:30:00
-#SBATCH --output=4_00_LED_2D_NewBaseline_AbsoluteRotTrans_RandomShuffle_output_%A.out
+#SBATCH --time=00:15:00
+#SBATCH --output=4_0_LED_2D_NewBaseline_AbsoluteRotTrans_RandomShuffle_output_%A.out
 
 
 source activate led
@@ -15,7 +15,7 @@ module load 2022
 module load CUDA/11.7.0
 
 cd $HOME/MoTric/4_LED_Kitti_6D_Dynamic/
-python main_led_nba.py --cfg 4_00_LED_2D_NewBaseline_AbsoluteRotTrans_RandomShuffle --info 4_00_LED_2D_NewBaseline_AbsoluteRotTrans_RandomShuffle --dataset kitti
+python main_led_nba.py --cfg 4_0_LED_2D_NewBaseline_AbsoluteRotTrans_RandomShuffle --info 4_0_LED_2D_NewBaseline_AbsoluteRotTrans_RandomShuffle --dataset kitti
 
 
 # Same parameters as in 2_X and 3. Most comparable to 3 which uses 3D translation only
@@ -23,26 +23,25 @@ python main_led_nba.py --cfg 4_00_LED_2D_NewBaseline_AbsoluteRotTrans_RandomShuf
 # Evaluation: on translations only. So checking if with the current implementation, adding rotation information helps denoise translation predictions
 
 
-
 # # ------------------- General Options -------------------------
 # description                  : LED
 # results_root_dir             : results
 # dataset                      : kitti
-# dimensions                   : 3 #with Lie rotation
+# dimensions                   : 2 #with Lie rotation
 
 # # ------------------- Dataset -------------------------
 # past_frames                  : 15
-# future_frames                : 24 #25 doesnt work for some reason
+# future_frames                : 25 #25 doesnt work for some reason
 # min_past_frames              : 15
-# min_future_frames            : 24
+# min_future_frames            : 25
 
-# k_preds                      : 24 #currently has to be the same as future... intended?
+# k_preds                      : 25 #currently has to be the same as future... intended?
 
 # # motion_dim                   : 3 #not used in code...
 # # forecast_dim                 : 3 #not used in code...
 
 # traj_mean                    : [14, 7.5] #middle of nba court - not used
-# traj_scale                   : 1 # effectively not used
+# traj_scale                   : 5 # effectively not used
 
 # relative                     : False
 # normalised                   : False

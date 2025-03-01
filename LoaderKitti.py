@@ -38,7 +38,7 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
     NOTE: Loads x z y translation (original LED) and Dual Quaternions: full SE3 pose.
     """
 
-    def __init__(self, dims: int, input_size: int, preds_size: int, training: bool, relative=False, normalised=False, train_ratio=0.85, seed=42):
+    def __init__(self, dims: int, input_size: int, preds_size: int, training: bool, final_eval: bool, relative=False, normalised=False, train_ratio=0.80, eval_ratio=0.10, seed=42, overlapping=False):
         """
         input_size (int): number of poses used as input (past trajectory)
         preds_size (int): nr of poses to be predicted (future trajectory)
@@ -46,10 +46,12 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
         """            
         window_size = input_size+preds_size
 
+        print('Overlapping:', overlapping)
+
         traj_list = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
 
         ### Load and split data from all KITTI trajectories
-        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size, relative, normalised) 
+        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size, relative, normalised, overlapping) 
         # p_inputs: [num_windows, input_size, 3, 4] p_targets: [num_windows, output_size, 3, 4]
 
         # print(f'Time diff avg (fut): {(t_targets[:,-1]-t_targets[:,0]).mean(dim=-1).item():.5f}')
@@ -119,12 +121,17 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
         indices = list(range(total_windows))
         random.seed(seed)
         random.shuffle(indices)
-        split_idx = int(total_windows * train_ratio)
+
+
+        split_idx_train = int(total_windows * train_ratio)
+        split_idx_validation = int(total_windows * (train_ratio+eval_ratio))
 
         if training:
-            selected_indices = indices[:split_idx]
-        else:
-            selected_indices = indices[split_idx:]
+            selected_indices = indices[:split_idx_train]
+        elif final_eval: #final testing
+            selected_indices = indices[split_idx_validation:]
+        else: #validation
+            selected_indices = indices[split_idx_train:split_idx_validation]
 
         # Subset data
         self.pre_motion_3D = all_pre[selected_indices]
@@ -454,16 +461,21 @@ def load_raw_traj_times(traj_idx):
 
 
 
-def load_one_and_split(traj, window_size, input_size, use_relative = False, use_normalised = False): #single trajectory - load and split
+def load_one_and_split(traj, window_size, input_size, use_relative = False, use_normalised = False, overlapping = False): #single trajectory - load and split
     """
     Loads a single trajectory’s poses and timestamps, then splits them into overlapping windows of size window_size.
     """
     poses = load_raw_traj_poses(traj)
     times = load_raw_traj_times(traj)
 
-    num_windows = poses.shape[0] - window_size +1
-    pose_windows = torch.stack([poses[i:i+window_size, :, :] for i in range(num_windows)]) #save in list and then stack in tensor [num_windows, window_size, 3, 4]
-    time_windows = torch.stack([times[i:i+window_size] for i in range(num_windows)]) # [num_windows, window_size]
+    if overlapping == False:
+        num_windows = poses.shape[0] // window_size 
+        pose_windows = torch.stack([poses[i*window_size:(i+1)*window_size, :, :] for i in range(num_windows)]) #save in list and then stack in tensor [num_windows, window_size, 3, 4]
+        time_windows = torch.stack([times[i*window_size:(i+1)*window_size] for i in range(num_windows)]) # [num_windows, window_size]
+    else:
+        num_windows = poses.shape[0] - window_size +1
+        pose_windows = torch.stack([poses[i:i+window_size, :, :] for i in range(num_windows)]) #save in list and then stack in tensor [num_windows, window_size, 3, 4]
+        time_windows = torch.stack([times[i:i+window_size] for i in range(num_windows)]) # [num_windows, window_size]
 
     if Danda == True:
         return pose_windows, time_windows # Split into subtrajectories but not input and target
@@ -487,7 +499,7 @@ def load_one_and_split(traj, window_size, input_size, use_relative = False, use_
                                       # For example: [4532, 10, 3, 4]
                                       # time windows: [num_windows, window_size]
 
-def load_all_and_split(traj_list, window_size, input_size, use_relative = False, use_normalised = False):
+def load_all_and_split(traj_list, window_size, input_size, use_relative = False, use_normalised = False, overlapping = False):
     """
     Returns combines pose and time windows of size window_size for all trajectories.
     
@@ -496,7 +508,7 @@ def load_all_and_split(traj_list, window_size, input_size, use_relative = False,
     p_input_all, p_target_all, t_input_all, t_target_all = [],[],[],[]
 
     for traj in traj_list:
-        input_poses, target_poses, input_times, target_times = load_one_and_split(traj, window_size, input_size, use_relative, use_normalised)
+        input_poses, target_poses, input_times, target_times = load_one_and_split(traj, window_size, input_size, use_relative, use_normalised, overlapping)
         
         p_input_all.append(input_poses)
         p_target_all.append(target_poses)
@@ -605,12 +617,12 @@ if __name__ == "__main__":
             break
 
     elif LED2D == True:
-        train_dataset = KITTIDatasetLeapfrog(dims = 2, input_size=10, preds_size=20, training=True, relative=True, normalised=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
+        train_dataset = KITTIDatasetLeapfrog(dims = 2, input_size=10, preds_size=20, training=True, relative=True, normalised=False, overlapping=True) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
         print_some_stats(train_dataset.fut_motion_3D, None, 2)
         print('Train trajectories:', len(train_dataset)) # 16106 for input_size=10, preds_size=20
         train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
 
-        test_dataset = KITTIDatasetLeapfrog(dims=2, input_size=10, preds_size=20, training=False, relative=True, normalised=False)
+        test_dataset = KITTIDatasetLeapfrog(dims=2, input_size=10, preds_size=20, training=False, relative=True, normalised=False, overlapping=True)
         print_some_stats(train_dataset.fut_motion_3D, None, 2)
         print('Test trajectories:', len(test_dataset)) # 6776 for input_size=10, preds_size=20
         test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)

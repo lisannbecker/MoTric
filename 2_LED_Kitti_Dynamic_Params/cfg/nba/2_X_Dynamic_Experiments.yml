@@ -30,7 +30,7 @@ diffusion                    : {
 lr                           : 5.e-3 #half of previous
 train_batch_size             : 32
 test_batch_size              : 32 #slows testing down a bit compared to default 500
-num_epochs                   : 80
+num_epochs                   : 60
 test_interval                : 1  # Added: evaluate every N epochs
 lr_scheduler                 : 'step'
 decay_step                   : 8
