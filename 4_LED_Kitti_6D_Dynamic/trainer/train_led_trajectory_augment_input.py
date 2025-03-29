@@ -18,7 +18,7 @@ from data.dataloader_nba import NBADataset, seq_collate
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) #LoaderKitti is two levels up
-from LoaderKitti import KITTIDatasetLeapfrog, seq_collate_kitti
+from PoseLoaderCustom import KITTIDatasetLeapfrog, seq_collate_kitti
 
 
 from models.model_led_initializer import LEDInitializer as InitializationModel
@@ -84,6 +84,7 @@ class Trainer:
 				input_size=self.cfg.past_frames,
 				preds_size=self.cfg.future_frames,
 				training=True,
+				final_eval=False,
 				relative=self.cfg.relative, 
 				normalised=self.cfg.normalised, 
 				train_ratio=0.85,
@@ -104,6 +105,7 @@ class Trainer:
 				input_size=self.cfg.past_frames,
 				preds_size=self.cfg.future_frames,
 				training=False,
+				final_eval=False,
 				relative=self.cfg.relative, 
 				normalised=self.cfg.normalised, 
 				train_ratio=0.85,
@@ -995,16 +997,18 @@ class Trainer:
 		prepare_seed(0)
 
 		### LB Prediction for single trajecotory
-		# with torch.no_grad():
-		# 	past_traj = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_past_traj.npy')).to(self.device)
-		# 	traj_mask = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_traj_mask.npy')).to(self.device)
-		# 	fut_traj = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_fut_traj.npy')).to(self.device)
+		with torch.no_grad():
+			past_traj = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_past_traj.npy')).to(self.device)
+			traj_mask = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_traj_mask.npy')).to(self.device)
+			fut_traj = torch.from_numpy(np.load('/home/scur2440/MoTric/4_LED_Kitti_6D_Dynamic/visualization/2D_Kitti_KDE_PreTraining/first_fut_traj.npy')).to(self.device)
 
-		# 	sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
-		# 	sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
-		# 	loc = sample_prediction + mean_estimation[:, None]
+			sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
+			sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
+			loc = sample_prediction + mean_estimation[:, None]
 			
-		# 	k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
+			k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
+			self.old_vis_prior_compute_motion_prior_kde(k_alternative_preds)
+			exit()
 		# 	priors = self.compute_batch_motion_priors_kde(k_alternative_preds)
 
 		# 	#Visualise 1st traj of first batch first pose

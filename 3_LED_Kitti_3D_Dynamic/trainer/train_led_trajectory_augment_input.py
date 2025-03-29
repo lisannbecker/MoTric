@@ -15,7 +15,7 @@ from data.dataloader_nba import NBADataset, seq_collate
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) #LoaderKitti is two levels up
-from LoaderKitti import KITTIDatasetLeapfrog2D, KITTIDatasetLeapfrog3D, seq_collate_kitti
+from PoseLoaderCustom import KITTIDatasetLeapfrog2D, KITTIDatasetLeapfrog3D, seq_collate_kitti
 
 
 from models.model_led_initializer import LEDInitializer as InitializationModel

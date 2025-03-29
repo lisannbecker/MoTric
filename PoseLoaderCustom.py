@@ -1,9 +1,13 @@
 import torch
 from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
+
 import os
 import sys
 import random
+
+import pandas as pd
 import numpy as np
+
 from scipy.spatial.transform import Rotation as R
 
 posenet_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "Continuous-Pose-in-NeRF"))
@@ -24,21 +28,22 @@ warnings.filterwarnings("ignore", category=UserWarning)
 ### Only one can be True
 Danda = False
 Fully_Custom = False
-LED2D = True
+LED2D = False
 LED3D = False
 LED6D = False
+Newer = False
+Spires = False
 
 
-
-
-class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotation
+class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotation
 
     """
-    Kitti dataset class compatible with leapfrog (LED) pipeline.
-    NOTE: Loads x z y translation (original LED) and Dual Quaternions: full SE3 pose.
+    Kitti/Spires/Newer dataset class compatible with leapfrog (LED) pipeline.
+    NOTE: Loads x z y translation (original LED) and full SE3 poses (rotation either Lie algebra "6D" or 6D "9D").
     """
 
-    def __init__(self, dims: int, input_size: int, preds_size: int, training: bool, final_eval: bool, relative=False, normalised=False, train_ratio=0.80, eval_ratio=0.10, seed=42, overlapping=False):
+    def __init__(self, dataset: str, dims: int, input_size: int, preds_size: int, training: bool, final_eval: bool, relative:bool=False, normalised:bool=False, 
+                 train_ratio=0.80, eval_ratio=0.10, seed=42, overlapping:bool=False, selected_trajectories:bool=False):
         """
         input_size (int): number of poses used as input (past trajectory)
         preds_size (int): nr of poses to be predicted (future trajectory)
@@ -46,21 +51,82 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
         """            
         window_size = input_size+preds_size
 
-        print('Overlapping:', overlapping)
+        print('Overfitting:', overlapping)
 
-        traj_list = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
+        if dataset == 'kitti':
+            file_names = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
+        elif dataset == 'newer':
+            dataset_path = '/home/scur2440/MoTric/NewerCollege'
+            file_names = [
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-easy.csv', 
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-medium.csv',
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-hard.csv',
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-stairs.csv',
+                          f'{dataset_path}/collection2/ground_truth/tum_format/gt-nc-park.csv',
+                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_easy.csv',
+                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_medium.csv',
+                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_hard.csv'
+                          ]
+        elif dataset == 'spires': 
+            dataset_path = '/home/scur2440/MoTric/Spires'
+            file_names = [f'{dataset_path}/2024-03-13-observatory-quarter-01/gt-tum.txt',
+                          f'{dataset_path}/2024-03-13-observatory-quarter-02/gt-tum.txt',
+                          f'{dataset_path}/2024-05-20-bodleian-library-02/gt-tum.txt'
+                          ]
+
+        # overlapping but not overfitting: split train/val/test by selected trajectories
+        if selected_trajectories:
+
+            if dataset == 'kitti':
+                if training == True:
+                    file_names = ['00', '01', '02', '04', '06', '07', '08']
+                elif final_eval == True:
+                    file_names = ['05']
+                else: #validation
+                    file_names = ['03', '09', '10']
+            elif dataset == 'newer':
+                if training == True:
+                    file_names = [
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-easy.csv', 
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-medium.csv',
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-stairs.csv',
+                          f'{dataset_path}/collection2/ground_truth/tum_format/gt-nc-park.csv',
+                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_easy.csv',
+                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_hard.csv'
+                          ]
+                elif final_eval == True:
+                    file_names = [
+                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-hard.csv',
+                          ]
+                else: #validation
+                    file_names = [
+                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_medium.csv'
+                          ]
+            elif dataset == 'spires':
+                print("[ERROR] selected trajectories is not enabled for Spires as only 3 trajectories are available.")
+                exit()
+
+            overlapping = True
+            print("Dataset split by trajectories, overlapping set to True.")
+            if len(file_names) == 0:
+                raise ValueError("None of the provided selected_trajectories matched the available files.")
+
 
         ### Load and split data from all KITTI trajectories
-        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(traj_list, window_size, input_size, relative, normalised, overlapping) 
+        p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(dataset, file_names, window_size, input_size, relative, normalised, overlapping) 
         # p_inputs: [num_windows, input_size, 3, 4] p_targets: [num_windows, output_size, 3, 4]
 
-        # print(f'Time diff avg (fut): {(t_targets[:,-1]-t_targets[:,0]).mean(dim=-1).item():.5f}')
+        print(f'Time diff avg (fut): {(t_targets[:,-1]-t_targets[:,0]).mean(dim=-1).item():.5f}')
 
 
         ### 1.1. 2D: Extract x, y translation
         if dims == 2:
-            trans_pre = p_inputs[:, :, [0,2], 3]  # [num_windows, input_size, 2] << 2D 
-            trans_fut = p_targets[:, :, [0,2], 3]  # [num_windows, output_size, 2] << 2D 
+            if dataset == 'kitti': # kitti is ordered xzy
+                trans_pre = p_inputs[:, :, [0,2], 3]  # [num_windows, input_size, 2] << 2D 
+                trans_fut = p_targets[:, :, [0,2], 3]  # [num_windows, output_size, 2] << 2D 
+            elif dataset in ['newer', 'spires']: #assuing xyz
+                trans_pre = p_inputs[:, :, :2, 3] 
+                trans_fut = p_targets[:, :, :2, 3]           
         ### 1.1. 3D/6D: Extract x, z, y translation
         else:
             trans_pre = p_inputs[:, :, :3, 3]  # [num_windows, input_size, 3] << 3D adjustment
@@ -88,7 +154,6 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
                 num_windows, seq_len_pre = rotations_pre.shape[:2]
                 num_windows_fut, seq_len_fut = rotations_fut.shape[:2]
 
-
             rotations_pre_flat = rotations_pre.reshape(-1, 3, 3)
             lie_pre_flat = self.lie.SO3_to_so3(rotations_pre_flat)  # [N, 3]
             lie_pre = lie_pre_flat.reshape(num_windows, seq_len_pre, 3)
@@ -99,8 +164,36 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
 
 
             ### 2. Concatenate translations and rotation and add agent dimension (1 for single-agent Kitti)
-            SE3_pre = torch.cat([trans_pre, lie_pre], dim=-1)
+            SE3_pre = torch.cat([trans_pre, lie_pre], dim=-1) # [tx, ty, tz, wx, wy, wz]
             SE3_fut = torch.cat([trans_fut, lie_fut], dim=-1)
+
+        # p_inputs: [num_windows, input_size, 3, 4] p_targets: [num_windows, output_size, 3, 4]
+        if dims == 9: #6D rotation representation - first two columns of homogenous matrix; flattened by rows
+            # print(p_inputs[0,0,:,:])
+            # Extract first two columns (6D rotation)
+            rotations_pre = p_inputs[:, :, :3, [0, 1]]  # Shape: [num_windows, input_size, 3, 2]
+            rotations_fut = p_targets[:, :, :3, [0, 1]]  # Shape: [num_windows, output_size, 3, 2]
+
+            # Extract the last column (Translation)
+            translations_pre = p_inputs[:, :, :3, [3]]  # Shape: [num_windows, input_size, 3, 1]
+            translations_fut = p_targets[:, :, :3, [3]]  # Shape: [num_windows, output_size, 3, 1]
+
+            # Reshape to flatten rotations into (B, input_size, 6) and translations into (B, input_size, 3)
+            rotations_pre = rotations_pre.reshape(rotations_pre.shape[0], rotations_pre.shape[1], -1)  # [B, input_size, 6]
+            rotations_fut = rotations_fut.reshape(rotations_fut.shape[0], rotations_fut.shape[1], -1)  # [B, output_size, 6]
+
+            translations_pre = translations_pre.squeeze(-1)  # Remove last dim -> [B, input_size, 3]
+            translations_fut = translations_fut.squeeze(-1)  # Remove last dim -> [B, output_size, 3]
+
+            # Concatenate to get final input/output tensors
+            SE3_pre = torch.cat((translations_pre, rotations_pre), dim=-1)  # Shape: [B, input_size, 9]
+            SE3_fut = torch.cat((translations_fut, rotations_fut), dim=-1)  # Shape: [B, output_size, 9]
+
+            # print(SE3_pre[0,0,:])
+            # print(SE3_pre.size(), SE3_fut.size())  # Debugging
+            # exit()
+
+
 
         else: #2D or 3D
             SE3_pre = trans_pre
@@ -116,28 +209,33 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
         all_fut_mask = torch.ones(all_fut.shape[0], 1, all_fut.shape[2])
 
 
+
         # 5. Randomly split the windows using a fixed seed 
         total_windows = all_pre.shape[0]
-        indices = list(range(total_windows))
-        random.seed(seed)
-        random.shuffle(indices)
+        if selected_trajectories is not None and (not training or final_eval): #no handpicked trajectories
+            selected_indices = list(range(total_windows))
+        else: 
+            indices = list(range(total_windows))
+            random.seed(seed)
+            random.shuffle(indices)
 
 
-        split_idx_train = int(total_windows * train_ratio)
-        split_idx_validation = int(total_windows * (train_ratio+eval_ratio))
+            split_idx_train = int(total_windows * train_ratio)
+            split_idx_validation = int(total_windows * (train_ratio+eval_ratio))
 
-        if training:
-            selected_indices = indices[:split_idx_train]
-        elif final_eval: #final testing
-            selected_indices = indices[split_idx_validation:]
-        else: #validation
-            selected_indices = indices[split_idx_train:split_idx_validation]
+            if training:
+                selected_indices = indices[:split_idx_train]
+            elif final_eval: #final testing
+                selected_indices = indices[split_idx_validation:]
+            else: #validation
+                selected_indices = indices[split_idx_train:split_idx_validation]
 
         # Subset data
         self.pre_motion_3D = all_pre[selected_indices]
         self.fut_motion_3D = all_fut[selected_indices]
         self.pre_motion_mask = all_pre_mask[selected_indices]
         self.fut_motion_mask = all_fut_mask[selected_indices]
+        print('Len dataset:', len(self.pre_motion_3D))
 
 
 
@@ -158,7 +256,7 @@ class KITTIDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rota
 
 
 
-def seq_collate_kitti(data): #allows to have None as pred_mask (as opposed to default collate)
+def seq_collate_custom(data): #allows to have None as pred_mask (as opposed to default collate)
     pre_motion_3D = torch.stack([d['pre_motion_3D'] for d in data], dim=0)
     fut_motion_3D = torch.stack([d['fut_motion_3D'] for d in data], dim=0)
     pre_motion_mask = torch.stack([d['pre_motion_mask'] for d in data], dim=0)
@@ -304,55 +402,32 @@ class Lie():
             ans = ans+(-1)**i*x**(2*i)/denom
         return ans
 
-
-
-###Not using this rn as I'm unsure how to retain the original LED translation pipeline then
-def quaternion_from_matrix(R_mat):
-    """
-    Convert 3x3 rotation matrix to a quaternion in [w, x, y, z] format.
-    SciPy’s Rotation.as_quat() returns [x, y, z, w], so we roll it.
-    """
-    rot = R.from_matrix(R_mat)
-    q = rot.as_quat()  # [x, y, z, w]
-    q = np.roll(q, 1)  # convert to [w, x, y, z] = move w to front
-    return q
-
-def quaternion_multiply(q, r):
-    """
-    Multiply two quaternions.
-    Assumes quaternions are in [w, x, y, z] order.
-    """
-    w1, x1, y1, z1 = q
-    w2, x2, y2, z2 = r
-    w = w1*w2 - x1*x2 - y1*y2 - z1*z2
-    x = w1*x2 + x1*w2 + y1*z2 - z1*y2
-    y = w1*y2 - x1*z2 + y1*w2 + z1*x2
-    z = w1*z2 + x1*y2 - y1*x2 + z1*w2
-    return np.array([w, x, y, z])
-
-def rigid_to_dual_quaternion(R_mat, t):
-    """
-    Convert a rigid-body transform (R_mat: 3x3 rotation, t: 3D translation) 
-    to an 8D dual quaternion representation.
+def quaternion_to_rotation_matrix(qx, qy, qz, qw):
+    # Normalize the quaternion
+    norm = np.sqrt(qx**2 + qy**2 + qz**2 + qw**2)
+    qx, qy, qz, qw = qx/norm, qy/norm, qz/norm, qw/norm
     
-    The dual quaternion is represented as [q_r, q_d]:
-      - q_r: rotation quaternion (unit, [w,x,y,z])
-      - q_d: 0.5 * (0,t) * q_r
-    """
-    # Get the rotation quaternion (make sure it’s normalized)
-    q_r = quaternion_from_matrix(R_mat)
-    q_r = q_r / np.linalg.norm(q_r)
-    
-    # Represent translation as a pure quaternion: [0, t_x, t_y, t_z]
-    t_quat = np.concatenate(([0.0], t))
-    # Compute the dual part: q_d = 0.5 * (t_quat * q_r)
-    q_d = 0.5 * quaternion_multiply(t_quat, q_r)
-    
-    # Concatenate to get an 8D dual quaternion: [q_r, q_d]
-    dq = np.concatenate((q_r, q_d))
-    return dq
+    R = np.array([
+        [1 - 2*(qy**2 + qz**2), 2*(qx*qy - qz*qw),     2*(qx*qz + qy*qw)],
+        [2*(qx*qy + qz*qw),     1 - 2*(qx**2 + qz**2), 2*(qy*qz - qx*qw)],
+        [2*(qx*qz - qy*qw),     2*(qy*qz + qx*qw),     1 - 2*(qx**2 + qy**2)]
+    ])
+    return R
 
+def TUM_to_homogenous_matrices(file_path):    
+    tum_data = pd.read_csv(file_path, sep=" ", header=None, names=["timestamp", "x", "y", "z", "qx", "qy", "qz", "qw"])
 
+    transformation_mats = []
+    times = []
+    for i, row in tum_data.iterrows():
+        R = quaternion_to_rotation_matrix(row['qx'], row['qy'], row['qz'], row['qw']) #3x3 rotation
+        t = np.array([[row['x']], [row['y']], [row['z']]]) # translation
+        T = np.hstack((R,t)) #3x4 matrix
+
+        transformation_mats.append(torch.tensor(T, dtype=torch.float32))
+        times.append(row['timestamp'])
+
+    return torch.stack(transformation_mats), torch.tensor(times, dtype=torch.float32)
 
 def to_relative(pose_windows, time_windows, input_size):
     rotations = pose_windows[..., :3]
@@ -435,8 +510,8 @@ def to_normalised(pose_windows, time_windows, input_size):
 
 
 
-def load_raw_traj_poses(traj_idx):
-    file_path = f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{traj_idx}.txt'
+def load_raw_traj_poses_kitti(file_idx):
+    file_path = f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{file_idx}.txt'
     poses = []
     with open(file_path, 'r') as f:
         for line in f:
@@ -451,8 +526,8 @@ def load_raw_traj_poses(traj_idx):
             poses.append(SE3)
     return torch.stack(poses)
 
-def load_raw_traj_times(traj_idx):
-    file_path = f'/home/scur2440/MoTric/KITTI_odometry/dataset/sequences/{traj_idx}/times.txt'
+def load_raw_traj_times_kitti(file_idx):
+    file_path = f'/home/scur2440/MoTric/KITTI_odometry/dataset/sequences/{file_idx}/times.txt'
     times = []
     with open(file_path, 'r') as f:
         for line in f:
@@ -461,12 +536,17 @@ def load_raw_traj_times(traj_idx):
 
 
 
-def load_one_and_split(traj, window_size, input_size, use_relative = False, use_normalised = False, overlapping = False): #single trajectory - load and split
+
+def load_one_and_split(dataset, file_name, window_size, input_size, use_relative = False, use_normalised = False, overlapping = False): #single trajectory - load and split
     """
     Loads a single trajectory’s poses and timestamps, then splits them into overlapping windows of size window_size.
     """
-    poses = load_raw_traj_poses(traj)
-    times = load_raw_traj_times(traj)
+    if dataset=='kitti':
+        poses = load_raw_traj_poses_kitti(file_name)
+        times = load_raw_traj_times_kitti(file_name)
+
+    if dataset in ['newer', 'spires']:
+        poses, times = TUM_to_homogenous_matrices(file_name)
 
     if overlapping == False:
         num_windows = poses.shape[0] // window_size 
@@ -499,7 +579,7 @@ def load_one_and_split(traj, window_size, input_size, use_relative = False, use_
                                       # For example: [4532, 10, 3, 4]
                                       # time windows: [num_windows, window_size]
 
-def load_all_and_split(traj_list, window_size, input_size, use_relative = False, use_normalised = False, overlapping = False):
+def load_all_and_split(dataset, file_name_list, window_size, input_size, use_relative = False, use_normalised = False, overlapping = False):
     """
     Returns combines pose and time windows of size window_size for all trajectories.
     
@@ -507,9 +587,9 @@ def load_all_and_split(traj_list, window_size, input_size, use_relative = False,
     """
     p_input_all, p_target_all, t_input_all, t_target_all = [],[],[],[]
 
-    for traj in traj_list:
-        input_poses, target_poses, input_times, target_times = load_one_and_split(traj, window_size, input_size, use_relative, use_normalised, overlapping)
-        
+    for file_name in file_name_list:
+        input_poses, target_poses, input_times, target_times = load_one_and_split(dataset, file_name, window_size, input_size, use_relative, use_normalised, overlapping)
+        print('file name & length', file_name, len(input_poses))
         p_input_all.append(input_poses)
         p_target_all.append(target_poses)
         t_input_all.append(input_times)
@@ -580,7 +660,6 @@ def print_some_stats(future, future_rot=None, translation_dims=3):
         print('Still need to implement rotation statistics')
 
 
-
 if __name__ == "__main__":
 
     if Danda == True:
@@ -616,41 +695,33 @@ if __name__ == "__main__":
             exit()
             break
 
-    elif LED2D == True:
-        train_dataset = KITTIDatasetLeapfrog(dims = 2, input_size=10, preds_size=20, training=True, relative=True, normalised=False, overlapping=True) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
-        print_some_stats(train_dataset.fut_motion_3D, None, 2)
+    else:
+        dimensions = 9 # possible values: 2, 3, 6, 9
+        dataset = 'kitti' # possible values: kitti (AD), newer (Pedestrian), spires (Pedestrian)
+        print(f'{dimensions}D {dataset.upper()}\n')
+
+        train_dataset = LoadDatasetLeapfrog(dataset=dataset, dims = dimensions, input_size=10, preds_size=24, training=True, final_eval=False, relative=True, normalised=False, overlapping=False, selected_trajectories=True) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
+        if dimensions==9:
+            print_some_stats(train_dataset.fut_motion_3D[..., :3], train_dataset.fut_motion_3D[..., 3:], 3)
+
+        else:
+            print_some_stats(train_dataset.fut_motion_3D, None, dimensions)
         print('Train trajectories:', len(train_dataset)) # 16106 for input_size=10, preds_size=20
-        train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_custom, pin_memory=True)
+        
+        test_dataset = LoadDatasetLeapfrog(dataset=dataset, dims=dimensions, input_size=10, preds_size=24, training=False, final_eval=False, relative=True, normalised=False, overlapping=False, selected_trajectories=True)
+        if dimensions==9:
+            print_some_stats(test_dataset.fut_motion_3D[..., :3], test_dataset.fut_motion_3D[..., 3:], 3)
 
-        test_dataset = KITTIDatasetLeapfrog(dims=2, input_size=10, preds_size=20, training=False, relative=True, normalised=False, overlapping=True)
-        print_some_stats(train_dataset.fut_motion_3D, None, 2)
+        else:
+            print_some_stats(test_dataset.fut_motion_3D, None, dimensions)
         print('Test trajectories:', len(test_dataset)) # 6776 for input_size=10, preds_size=20
-        test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
+        test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_custom, pin_memory=True)
 
-    elif LED3D == True:
-        train_dataset = KITTIDatasetLeapfrog(dims=3, input_size=10, preds_size=20, training=True, relative=True, normalised=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
-        print_some_stats(train_dataset.fut_motion_3D)
-        print('Train trajectories:', len(train_dataset))
-        train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
-
-        test_dataset = KITTIDatasetLeapfrog(dims=3, input_size=10, preds_size=20, training=False, relative=True, normalised=False)
-        print_some_stats(test_dataset.fut_motion_3D)
-        print('Test trajectories:', len(test_dataset)) 
-        test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
-
-    elif LED6D == True:
-
-        train_dataset = KITTIDatasetLeapfrog(dims=6, input_size=10, preds_size=20, training=True, relative=True, normalised=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
-        print('Train trajectories:', len(train_dataset)) 
-        train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
-        print_some_stats(train_dataset.fut_motion_3D[..., :3], train_dataset.fut_motion_3D[..., 3:], 3)
-
-        test_dataset = KITTIDatasetLeapfrog(dims=6, input_size=10, preds_size=20, training=False, relative=True, normalised=False)
-        print('Test trajectories:', len(test_dataset)) 
-        test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_kitti, pin_memory=True)
-        print_some_stats(test_dataset.fut_motion_3D[..., :3], test_dataset.fut_motion_3D[..., 3:], 3)
 
     for batch in train_loader:
+        # print(batch['pre_motion_3D'][0])
+        exit()
         print(batch.keys())
         print("\nBatch pre-motion shape:", batch['pre_motion_3D'].shape)  # [batch_size, 1, past_poses, 3]
         print("Batch future motion shape:", batch['fut_motion_3D'].shape)  # [batch_size, 1, future_poses, 3]
@@ -685,8 +756,6 @@ Total N of Windows: 23102
 print(f'Trajectory {traj} Length: {times.size()[0]}')
 """
 
-
-
 """
 code dump
 
@@ -719,7 +788,7 @@ def load_one_and_split(traj, window_size = 100): #single trajectory - load and s
 
 """
 
-class KITTIDatasetLeapfrog2D(Dataset): # corresponds to class NBADataset in dataloader_nba.py
+class LoadDatasetLeapfrog2D(Dataset): # corresponds to class NBADataset in dataloader_nba.py
 
     """
     Kitti dataset class compatible with leapfrog (LED) pipeline.
@@ -751,9 +820,9 @@ class KITTIDatasetLeapfrog2D(Dataset): # corresponds to class NBADataset in data
         self.pre_motion_2D = p_inputs[:, :, :2, 3]  # [num_windows, input_size, 2]
         self.fut_motion_2D = p_targets[:, :, :2, 3]  # [num_windows, window_size - input_size, 2]
 
-
         self.pre_motion_2D = p_inputs[:,:,[0,2],3] 
         self.fut_motion_2D = p_targets[:, :, [0,2], 3]
+
 
         ### 2. LED pipeline uses an extra dimension at index 1 for the number of agents
         # We add this extra dimension and set it to 1 as Kitti is single-agent
@@ -778,7 +847,7 @@ class KITTIDatasetLeapfrog2D(Dataset): # corresponds to class NBADataset in data
 
         return sample
 
-class KITTIDatasetLeapfrog3D(Dataset): #Similar to class NBADataset in dataloader_nba.py
+class LoadDatasetLeapfrog3D(Dataset): #Similar to class NBADataset in dataloader_nba.py
 
     """
     Kitti dataset class compatible with leapfrog (LED) pipeline.
@@ -838,7 +907,7 @@ class KITTIDatasetLeapfrog3D(Dataset): #Similar to class NBADataset in dataloade
             sample = self.transform(sample)
         return sample
 
-class KITTIDatasetLeapfrog6D(Dataset): #3D translation and 3D Lie algebra for rotation
+class LoadDatasetLeapfrog6D(Dataset): #3D translation and 3D Lie algebra for rotation
 
     """
     Kitti dataset class compatible with leapfrog (LED) pipeline.

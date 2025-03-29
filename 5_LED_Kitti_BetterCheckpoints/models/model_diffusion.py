@@ -74,7 +74,7 @@ class TransformerDenoisingModel(Module):
 		self.d_f = d_f #should be 6 for SE3
 		self.d_h = d_f*3 #18
 		self.encoder_context = social_transformer(t_h, self.d_h)
-		self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=24) #TODO set to more for kitti
+		self.pos_emb = PositionalEncoding(d_model=2*context_dim, dropout=0.1, max_len=24) #TODO set to more for non-NBA
 		self.concat1 = ConcatSquashLinear(d_f, 2*context_dim, context_dim+3)
 		self.layer = nn.TransformerEncoderLayer(d_model=2*context_dim, nhead=2, dim_feedforward=2*context_dim)
 		self.transformer_encoder = nn.TransformerEncoder(self.layer, num_layers=tf_layer)
@@ -84,11 +84,17 @@ class TransformerDenoisingModel(Module):
 			self.linear = ConcatSquashLinear(context_dim//2, d_f, context_dim+3)
 
 
-		else:
+		elif d_f ==6:
 			#self.linear = ConcatSquashLinear(context_dim//2, d_f, context_dim+3)
 			# Two separate heads: one for translation (3D) and one for rotation (3D Lie algebra)
 			self.linear_trans = ConcatSquashLinear(context_dim // 2, 3, context_dim + 3)
 			self.linear_rot = ConcatSquashLinear(context_dim // 2, 3, context_dim + 3)
+
+		elif d_f == 9:
+			# 9D output: translation (3) + rotation (6)
+			self.linear_trans = ConcatSquashLinear(context_dim // 2, 3, context_dim + 3)
+			self.linear_rot = ConcatSquashLinear(context_dim // 2, 6, context_dim + 3)
+
 
 
 	def forward(self, x, beta, context, mask):
@@ -110,20 +116,26 @@ class TransformerDenoisingModel(Module):
 		final_emb = self.pos_emb(final_emb)
 		
 		# Pass through transformer encoder
+		trans = self.transformer_encoder(final_emb).permute(1,0,2)
+		trans = self.concat3(ctx_emb, trans)
+		trans = self.concat4(ctx_emb, trans)
+
 		if self.cfg.dimensions in [2,3]:
-			trans = self.transformer_encoder(final_emb).permute(1,0,2)
-			trans = self.concat3(ctx_emb, trans)
-			trans = self.concat4(ctx_emb, trans)
 			return self.linear(ctx_emb, trans)
 
-		trans_emb = self.transformer_encoder(final_emb).permute(1,0,2)
-		trans_emb = self.concat3(ctx_emb, trans_emb)
-		trans_emb = self.concat4(ctx_emb, trans_emb)
+		elif self.cfg.dimensions == 6:
+			# 6D output: translation (3), rotation (3)
+			pred_trans = self.linear_trans(ctx_emb, trans)  # (B, T, 3)
+			pred_rot = self.linear_rot(ctx_emb, trans)      # (B,T,3)
+			pred = torch.cat([pred_trans, pred_rot], dim=-1)  # (B, T, 6)
 
-		pred_trans = self.linear_trans(ctx_emb, trans_emb) # (B, T, 3) translation
-		pred_rot = self.linear_rot(ctx_emb, trans_emb) # (B, T, 3) rotation (Lie algebra)
-		pred = torch.cat([pred_trans, pred_rot], dim=-1) # concatenate along pose dimension (last) # (B, T, 6)
-		return pred
+			return pred
+		elif self.cfg.dimensions == 9:
+			# 9D output: translation (3), rotation (6)
+			pred_trans = self.linear_trans(ctx_emb, trans)  # (B, T, 3)
+			pred_rot = self.linear_rot(ctx_emb, trans)      # (B, T, 6)
+			pred = torch.cat([pred_trans, pred_rot], dim=-1)  # (B, T, 9)
+			return pred
 		#return self.linear(ctx_emb, trans)
 	
 

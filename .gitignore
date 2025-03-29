@@ -1,3 +1,7 @@
+MID/
+Spires/
+NewerCollege/
+
 0_LED_Backup/results
 1_LED_Backup_Kitti_Original_Params/results
 2_LED_Kitti_Dynamic_Params/results
@@ -23,6 +27,7 @@
 SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth.git
 
 KITTI_odometry
+_Archive/
 _Archive/Kitti_2D_LED_20epochs
 XTrainLEDKitti.py
 

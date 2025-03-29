@@ -1,0 +1,49 @@
+This looks as expected too
+
+[INFO] Checkpoint loaded from ./results/5_1_Overfitting_VisCheck/5_1_Overfitting_VisCheck/models/checkpoint_epoch_63.pth
+[INFO] Visualisation saved to ./visualization/Sanity_0.jpg
+Probability Density of GT pose at time 0: 1222.2734862762118
+[INFO] Visualisation saved to ./visualization/Sanity_1.jpg
+Probability Density of GT pose at time 1: 937.6245782493812
+[INFO] Visualisation saved to ./visualization/Sanity_2.jpg
+Probability Density of GT pose at time 2: 562.7002907699222
+[INFO] Visualisation saved to ./visualization/Sanity_3.jpg
+Probability Density of GT pose at time 3: 230.01060324861797
+[INFO] Visualisation saved to ./visualization/Sanity_4.jpg
+Probability Density of GT pose at time 4: 136.5919740797331
+[INFO] Visualisation saved to ./visualization/Sanity_5.jpg
+Probability Density of GT pose at time 5: 74.45061268747958
+[INFO] Visualisation saved to ./visualization/Sanity_6.jpg
+Probability Density of GT pose at time 6: 38.41684238104603
+[INFO] Visualisation saved to ./visualization/Sanity_7.jpg
+Probability Density of GT pose at time 7: 23.521972992804994
+[INFO] Visualisation saved to ./visualization/Sanity_8.jpg
+Probability Density of GT pose at time 8: 13.35445267632262
+[INFO] Visualisation saved to ./visualization/Sanity_9.jpg
+Probability Density of GT pose at time 9: 8.084807587416257
+[INFO] Visualisation saved to ./visualization/Sanity_10.jpg
+Probability Density of GT pose at time 10: 4.511243024261479
+[INFO] Visualisation saved to ./visualization/Sanity_11.jpg
+Probability Density of GT pose at time 11: 2.5092140907448943
+[INFO] Visualisation saved to ./visualization/Sanity_12.jpg
+Probability Density of GT pose at time 12: 1.234047625497017
+[INFO] Visualisation saved to ./visualization/Sanity_13.jpg
+Probability Density of GT pose at time 13: 0.6553992582098058
+[INFO] Visualisation saved to ./visualization/Sanity_14.jpg
+Probability Density of GT pose at time 14: 0.3127300686406257
+[INFO] Visualisation saved to ./visualization/Sanity_15.jpg
+Probability Density of GT pose at time 15: 0.14963606286526132
+[INFO] Visualisation saved to ./visualization/Sanity_16.jpg
+Probability Density of GT pose at time 16: 0.054608448090119215
+[INFO] Visualisation saved to ./visualization/Sanity_17.jpg
+Probability Density of GT pose at time 17: 0.024228795810089136
+[INFO] Visualisation saved to ./visualization/Sanity_18.jpg
+Probability Density of GT pose at time 18: 0.00964120472934112
+[INFO] Visualisation saved to ./visualization/Sanity_19.jpg
+Probability Density of GT pose at time 19: 0.002967415771792172
+[INFO] Visualisation saved to ./visualization/Sanity_20.jpg
+Probability Density of GT pose at time 20: 0.001524310684566139
+[INFO] Visualisation saved to ./visualization/Sanity_21.jpg
+Probability Density of GT pose at time 21: 0.000531388533575183
+[INFO] Visualisation saved to ./visualization/Sanity_22.jpg
+Probability Density of GT pose at time 22: 3.572898004023895e-05

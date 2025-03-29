@@ -12,7 +12,6 @@ class LEDInitializer(nn.Module):
 		t_f: future timestamps,
 		d_f: dimension of each future timestamp,
 		k_pred: number of predictions.
-
 		'''
 		super(LEDInitializer, self).__init__()
 		self.n = k_pred
@@ -42,25 +41,33 @@ class LEDInitializer(nn.Module):
 		'''
 		mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
 
+		# Social encoding: capture interactions over the past
 		social_embed = self.social_encoder(x, mask)
 		social_embed = social_embed.squeeze(1)
 		# B, 256
 		
-		ego_var_embed = self.ego_var_encoder(x)
-		ego_mean_embed = self.ego_mean_encoder(x)
-		ego_scale_embed = self.ego_scale_encoder(x)
+		# Separate encoders for different aspects
+		ego_var_embed = self.ego_var_encoder(x) # For variance estimation.
+		ego_mean_embed = self.ego_mean_encoder(x) # For mean estimation.
+		ego_scale_embed = self.ego_scale_encoder(x) # For scale (used in sample prediction)
 		# B, 256
 
+		# Combine embeddings to estimate the mean
 		mean_total = torch.cat((ego_mean_embed, social_embed), dim=-1)
-		
 		guess_mean = self.mean_decoder(mean_total).contiguous().view(-1, self.fut_len, self.d_f)
 
+		# Combine embeddings to estimate the scale (and eventually, variance)
 		scale_total = torch.cat((ego_scale_embed, social_embed), dim=-1)
 		guess_scale = self.scale_decoder(scale_total)
 
+		# Combine embeddings to estimate the variance and generate K normalized offsets
 		guess_scale_feat = self.scale_encoder(guess_scale)
 		var_total = torch.cat((ego_var_embed, social_embed, guess_scale_feat), dim=-1)
 		guess_var = self.var_decoder(var_total).reshape(x.size(0), self.n, self.fut_len, self.d_f)
+
+		# guess_mean  -> corresponds to μθ
+		# guess_var   -> corresponds to the raw prediction that will be transformed into σθ
+		# guess_scale -> serves as the normalized offsets S_{bθ,k} after further processing in training
 
 		return guess_var, guess_mean, guess_scale
 
