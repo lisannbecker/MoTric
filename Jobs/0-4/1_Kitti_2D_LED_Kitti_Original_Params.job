@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=LED_2D_Kitti
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=06:30:00
+#SBATCH --output=Kitti_2D_LED_output_%A.out
+
+
+source activate led
+module purge
+module load 2022
+module load CUDA/11.7.0
+
+cd $HOME/thesis/LED/
+python main_led_nba.py --cfg led_augment --info Kitti_2D_LED --dataset kitti
+
+
+# past_frames                  : 10
+# future_frames                : 20

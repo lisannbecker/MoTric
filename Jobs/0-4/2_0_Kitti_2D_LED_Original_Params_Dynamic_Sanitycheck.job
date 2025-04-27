@@ -1,0 +1,29 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=LED_Sanitycheck
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=1:35:00
+#SBATCH --output=2_0_Kitti_2D_LED_Original_Params_Dynamic_Sanitycheck_output_%A.out
+
+
+source activate led
+module purge
+module load 2022
+module load CUDA/11.7.0
+
+cd $HOME/thesis/LED/
+python main_led_nba.py --cfg 2_0_led_kitti_predict_dynamic_sanitycheck --info 2_0_Kitti_2D_Original_Params_Dynamic_Sanitycheck --dataset kitti
+
+
+# past_frames                  : 10
+# future_frames                : 20
+# traj_mean                    : [14, 7.5]
+# num_epochs                   : 32
+# train_batch_size             : 10
+# test_batch_size              : 500
+
+
+# which is the same as the original ones, but I want to check if my updates (enabling using dynamic parameters) and working without checkpoints affect the results

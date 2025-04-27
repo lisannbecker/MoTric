@@ -487,7 +487,7 @@ class Trainer:
 
 
 	def fit(self):
-		# Training loop
+		# Training loop		
 		for epoch in range(0, self.cfg.num_epochs):
 			loss_total, loss_trans, loss_rot, loss_distance, loss_uncertainty = self._train_single_epoch(epoch)
 
@@ -508,9 +508,12 @@ class Trainer:
 					print_log('--ADE ({} time steps): {:.4f}\t--FDE ({} time steps): {:.4f}'.format(
 						time_i, performance['ADE'][i]/samples,
 						time_i, performance['FDE'][i]/samples), self.log)
+					
+
 				# cp_path = self.cfg.model_path % (epoch + 1)
 				# model_cp = {'model_initializer_dict': self.model_initializer.state_dict()}
 				# torch.save(model_cp, cp_path)
+
 				self.save_checkpoint(epoch + 1)
 
 			self.scheduler_model.step()

@@ -8,6 +8,8 @@ NewerCollege/
 3_LED_Kitti_3D_Dynamic/results
 4_LED_Kitti_6D_Dynamic/results
 5_LED_Kitti_BetterCheckpoints/results
+6_LED_Prior/results
+
 
 0_LED_Backup/data
 1_LED_Backup_Kitti_Original_Params/data
@@ -15,6 +17,7 @@ NewerCollege/
 3_LED_Kitti_3D_Dynamic/data
 4_LED_Kitti_6D_Dynamic/data
 5_LED_Kitti_BetterCheckpoints/data
+6_LED_Prior/data
 
 
 0_LED_Backup/visualization
@@ -23,6 +26,17 @@ NewerCollege/
 3_LED_Kitti_3D_Dynamic/visualization
 4_LED_Kitti_6D_Dynamic/visualization/data
 5_LED_Kitti_BetterCheckpoints/visualization/data
+6_LED_Prior/visualization/data
+
+
+/SplaTAM/*
+!/SplaTAM/_prior_integration.py
+!/SplaTAM/_rotation_utils_old.py
+!/SplaTAM/_rotation_utils.py
+!/SplaTAM/scripts/
+!/SplaTAM/scripts/splatam.py
+
+
 
 SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth.git
 
@@ -30,6 +44,10 @@ KITTI_odometry
 _Archive/
 _Archive/Kitti_2D_LED_20epochs
 XTrainLEDKitti.py
+
+SplaTAM_with_PoseNet
+Synthetic/**/*.txt
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

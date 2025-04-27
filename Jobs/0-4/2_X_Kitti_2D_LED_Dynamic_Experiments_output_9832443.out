@@ -1,0 +1,347 @@
+***************************************************************************************************** 
+* WARNING: The 2022 software stack is deprecated. Please consider switching to
+the latest 2024 * 
+* software stack, or the older 2023 software stack. * 
+* * 
+* If you have any question, please contact us via
+http://servicedesk.surfsara.nl. * 
+***************************************************************************************************** 
+
+Configuration:
+description: LED
+results_root_dir: results
+dataset: kitti
+past_frames: 15
+future_frames: 24
+min_past_frames: 15
+min_future_frames: 24
+motion_dim: 2
+forecast_dim: 2
+traj_mean: [14, 7.5]
+traj_scale: 5
+pretrained_core_denoising_model: ./results/checkpoints/base_diffusion_model.p
+debug: False
+diffusion: {'steps': 150, 'beta_start': 0.0001, 'beta_end': 0.05, 'beta_schedule': 'linear'}
+lr: 0.005
+train_batch_size: 32
+test_batch_size: 32
+num_epochs: 80
+test_interval: 1
+lr_scheduler: step
+decay_step: 8
+decay_gamma: 0.7
+
+KITTI dataset (1 agent).
+[INFO] Kitti dataset - skip subtracting mean from absolute positions.
+[INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)
+
+[FYI] Average Euclidean distance between start and end pose (20 timesteps): tensor(10.5206) << estimate
+
+
+[Core Denoising Model] Trainable/Total: 6576400/6576400
+[Initialization Model] Trainable/Total: 5004233/5004233
+[2025-02-09 00:25:20] Epoch: 0		Loss: 63803.459646	Loss Dist.: 11.857949	Loss Uncertainty: 63791.603350
+--ADE(1s): 0.5805	--FDE(1s): 0.4682
+--ADE(2s): 0.6426	--FDE(2s): 0.6891
+--ADE(3s): 0.7065	--FDE(3s): 0.7477
+--ADE(4s): 0.8278	--FDE(4s): 0.9963
+[2025-02-09 00:27:22] Epoch: 1		Loss: 7.599937	Loss Dist.: 6.585385	Loss Uncertainty: 1.014551
+--ADE(1s): 0.5048	--FDE(1s): 0.4388
+--ADE(2s): 0.6588	--FDE(2s): 0.7084
+--ADE(3s): 0.8244	--FDE(3s): 1.0686
+--ADE(4s): 1.0029	--FDE(4s): 1.4807
+[2025-02-09 00:29:24] Epoch: 2		Loss: 6.010541	Loss Dist.: 5.236967	Loss Uncertainty: 0.773575
+--ADE(1s): 0.4643	--FDE(1s): 0.4725
+--ADE(2s): 0.5164	--FDE(2s): 0.4851
+--ADE(3s): 0.5650	--FDE(3s): 0.5569
+--ADE(4s): 0.6365	--FDE(4s): 0.7346
+[2025-02-09 00:31:27] Epoch: 3		Loss: 5.482094	Loss Dist.: 4.818902	Loss Uncertainty: 0.663192
+--ADE(1s): 0.3608	--FDE(1s): 0.4003
+--ADE(2s): 0.4993	--FDE(2s): 0.6953
+--ADE(3s): 0.6858	--FDE(3s): 1.0190
+--ADE(4s): 0.8477	--FDE(4s): 1.3139
+[2025-02-09 00:33:29] Epoch: 4		Loss: 4.711138	Loss Dist.: 4.207002	Loss Uncertainty: 0.504136
+--ADE(1s): 0.2684	--FDE(1s): 0.2347
+--ADE(2s): 0.3247	--FDE(2s): 0.3826
+--ADE(3s): 0.4229	--FDE(3s): 0.6304
+--ADE(4s): 0.5403	--FDE(4s): 0.8827
+[2025-02-09 00:35:31] Epoch: 5		Loss: 4.221406	Loss Dist.: 3.780162	Loss Uncertainty: 0.441244
+--ADE(1s): 0.3543	--FDE(1s): 0.3713
+--ADE(2s): 0.4256	--FDE(2s): 0.4287
+--ADE(3s): 0.5067	--FDE(3s): 0.6467
+--ADE(4s): 0.5876	--FDE(4s): 0.7978
+[2025-02-09 00:37:33] Epoch: 6		Loss: 4.236083	Loss Dist.: 3.801493	Loss Uncertainty: 0.434589
+--ADE(1s): 0.2817	--FDE(1s): 0.2657
+--ADE(2s): 0.3688	--FDE(2s): 0.4520
+--ADE(3s): 0.4634	--FDE(3s): 0.6750
+--ADE(4s): 0.5948	--FDE(4s): 0.9774
+[2025-02-09 00:39:35] Epoch: 7		Loss: 3.992580	Loss Dist.: 3.591440	Loss Uncertainty: 0.401139
+--ADE(1s): 0.4298	--FDE(1s): 0.3975
+--ADE(2s): 0.4417	--FDE(2s): 0.4027
+--ADE(3s): 0.4799	--FDE(3s): 0.5596
+--ADE(4s): 0.5655	--FDE(4s): 0.7346
+[2025-02-09 00:41:37] Epoch: 8		Loss: 3.145405	Loss Dist.: 2.861118	Loss Uncertainty: 0.284286
+--ADE(1s): 0.1813	--FDE(1s): 0.1733
+--ADE(2s): 0.2320	--FDE(2s): 0.2992
+--ADE(3s): 0.3228	--FDE(3s): 0.4944
+--ADE(4s): 0.4241	--FDE(4s): 0.6757
+[2025-02-09 00:43:39] Epoch: 9		Loss: 3.060083	Loss Dist.: 2.796989	Loss Uncertainty: 0.263094
+--ADE(1s): 0.1741	--FDE(1s): 0.1765
+--ADE(2s): 0.2454	--FDE(2s): 0.3061
+--ADE(3s): 0.3242	--FDE(3s): 0.4844
+--ADE(4s): 0.4190	--FDE(4s): 0.6903
+[2025-02-09 00:45:41] Epoch: 10		Loss: 3.144735	Loss Dist.: 2.838600	Loss Uncertainty: 0.306135
+--ADE(1s): 0.2240	--FDE(1s): 0.2231
+--ADE(2s): 0.2921	--FDE(2s): 0.3972
+--ADE(3s): 0.3925	--FDE(3s): 0.6056
+--ADE(4s): 0.5073	--FDE(4s): 0.8245
+[2025-02-09 00:47:43] Epoch: 11		Loss: 3.076206	Loss Dist.: 2.827095	Loss Uncertainty: 0.249111
+--ADE(1s): 0.1664	--FDE(1s): 0.1670
+--ADE(2s): 0.2220	--FDE(2s): 0.2882
+--ADE(3s): 0.3070	--FDE(3s): 0.4810
+--ADE(4s): 0.4089	--FDE(4s): 0.7078
+[2025-02-09 00:49:45] Epoch: 12		Loss: 3.052063	Loss Dist.: 2.775953	Loss Uncertainty: 0.276110
+--ADE(1s): 0.1737	--FDE(1s): 0.1488
+--ADE(2s): 0.2119	--FDE(2s): 0.2229
+--ADE(3s): 0.2748	--FDE(3s): 0.3716
+--ADE(4s): 0.3628	--FDE(4s): 0.5323
+[2025-02-09 00:51:47] Epoch: 13		Loss: 2.951526	Loss Dist.: 2.686218	Loss Uncertainty: 0.265308
+--ADE(1s): 0.1583	--FDE(1s): 0.1754
+--ADE(2s): 0.2320	--FDE(2s): 0.3154
+--ADE(3s): 0.3329	--FDE(3s): 0.5442
+--ADE(4s): 0.4360	--FDE(4s): 0.7348
+[2025-02-09 00:53:49] Epoch: 14		Loss: 2.857459	Loss Dist.: 2.607948	Loss Uncertainty: 0.249511
+--ADE(1s): 0.1179	--FDE(1s): 0.1025
+--ADE(2s): 0.1653	--FDE(2s): 0.2152
+--ADE(3s): 0.2454	--FDE(3s): 0.3869
+--ADE(4s): 0.3399	--FDE(4s): 0.6064
+[2025-02-09 00:55:51] Epoch: 15		Loss: 2.776816	Loss Dist.: 2.566368	Loss Uncertainty: 0.210448
+--ADE(1s): 0.1298	--FDE(1s): 0.1253
+--ADE(2s): 0.1858	--FDE(2s): 0.2511
+--ADE(3s): 0.2647	--FDE(3s): 0.4047
+--ADE(4s): 0.3579	--FDE(4s): 0.6038
+[2025-02-09 00:57:54] Epoch: 16		Loss: 2.370353	Loss Dist.: 2.211019	Loss Uncertainty: 0.159334
+--ADE(1s): 0.1650	--FDE(1s): 0.1664
+--ADE(2s): 0.2132	--FDE(2s): 0.2893
+--ADE(3s): 0.2974	--FDE(3s): 0.4954
+--ADE(4s): 0.4099	--FDE(4s): 0.7530
+[2025-02-09 00:59:56] Epoch: 17		Loss: 2.280589	Loss Dist.: 2.131801	Loss Uncertainty: 0.148788
+--ADE(1s): 0.1936	--FDE(1s): 0.1810
+--ADE(2s): 0.2262	--FDE(2s): 0.2576
+--ADE(3s): 0.2790	--FDE(3s): 0.4110
+--ADE(4s): 0.3639	--FDE(4s): 0.6271
+[2025-02-09 01:01:58] Epoch: 18		Loss: 2.328358	Loss Dist.: 2.178194	Loss Uncertainty: 0.150164
+--ADE(1s): 0.1448	--FDE(1s): 0.1349
+--ADE(2s): 0.1842	--FDE(2s): 0.2430
+--ADE(3s): 0.2578	--FDE(3s): 0.4172
+--ADE(4s): 0.3526	--FDE(4s): 0.6315
+[2025-02-09 01:04:00] Epoch: 19		Loss: 2.265609	Loss Dist.: 2.132693	Loss Uncertainty: 0.132916
+--ADE(1s): 0.1348	--FDE(1s): 0.1032
+--ADE(2s): 0.1725	--FDE(2s): 0.2272
+--ADE(3s): 0.2453	--FDE(3s): 0.3843
+--ADE(4s): 0.3448	--FDE(4s): 0.6079
+[2025-02-09 01:06:03] Epoch: 20		Loss: 2.185208	Loss Dist.: 2.083055	Loss Uncertainty: 0.102153
+--ADE(1s): 0.1885	--FDE(1s): 0.1841
+--ADE(2s): 0.2128	--FDE(2s): 0.2369
+--ADE(3s): 0.2742	--FDE(3s): 0.4150
+--ADE(4s): 0.3656	--FDE(4s): 0.6306
+[2025-02-09 01:08:05] Epoch: 21		Loss: 2.192938	Loss Dist.: 2.085243	Loss Uncertainty: 0.107696
+--ADE(1s): 0.1364	--FDE(1s): 0.1418
+--ADE(2s): 0.2021	--FDE(2s): 0.2835
+--ADE(3s): 0.2878	--FDE(3s): 0.4781
+--ADE(4s): 0.3928	--FDE(4s): 0.7400
+[2025-02-09 01:10:07] Epoch: 22		Loss: 2.209260	Loss Dist.: 2.109355	Loss Uncertainty: 0.099905
+--ADE(1s): 0.1345	--FDE(1s): 0.1306
+--ADE(2s): 0.1901	--FDE(2s): 0.2663
+--ADE(3s): 0.2688	--FDE(3s): 0.4492
+--ADE(4s): 0.3684	--FDE(4s): 0.6694
+[2025-02-09 01:12:09] Epoch: 23		Loss: 2.180043	Loss Dist.: 2.072906	Loss Uncertainty: 0.107137
+--ADE(1s): 0.1206	--FDE(1s): 0.1232
+--ADE(2s): 0.1683	--FDE(2s): 0.2486
+--ADE(3s): 0.2418	--FDE(3s): 0.4148
+--ADE(4s): 0.3379	--FDE(4s): 0.6329
+[2025-02-09 01:14:11] Epoch: 24		Loss: 1.880185	Loss Dist.: 1.823202	Loss Uncertainty: 0.056984
+--ADE(1s): 0.1201	--FDE(1s): 0.1171
+--ADE(2s): 0.1700	--FDE(2s): 0.2335
+--ADE(3s): 0.2396	--FDE(3s): 0.3947
+--ADE(4s): 0.3286	--FDE(4s): 0.5992
+[2025-02-09 01:16:14] Epoch: 25		Loss: 1.815671	Loss Dist.: 1.774378	Loss Uncertainty: 0.041294
+--ADE(1s): 0.1103	--FDE(1s): 0.1138
+--ADE(2s): 0.1578	--FDE(2s): 0.2300
+--ADE(3s): 0.2336	--FDE(3s): 0.4175
+--ADE(4s): 0.3362	--FDE(4s): 0.6425
+[2025-02-09 01:18:16] Epoch: 26		Loss: 1.853176	Loss Dist.: 1.809198	Loss Uncertainty: 0.043978
+--ADE(1s): 0.1347	--FDE(1s): 0.1269
+--ADE(2s): 0.1794	--FDE(2s): 0.2506
+--ADE(3s): 0.2561	--FDE(3s): 0.4485
+--ADE(4s): 0.3609	--FDE(4s): 0.7048
+[2025-02-09 01:20:18] Epoch: 27		Loss: 1.722103	Loss Dist.: 1.715544	Loss Uncertainty: 0.006559
+--ADE(1s): 0.1319	--FDE(1s): 0.1263
+--ADE(2s): 0.1721	--FDE(2s): 0.2228
+--ADE(3s): 0.2443	--FDE(3s): 0.4083
+--ADE(4s): 0.3414	--FDE(4s): 0.6425
+[2025-02-09 01:22:20] Epoch: 28		Loss: 1.734197	Loss Dist.: 1.723174	Loss Uncertainty: 0.011023
+--ADE(1s): 0.1324	--FDE(1s): 0.1393
+--ADE(2s): 0.1835	--FDE(2s): 0.2505
+--ADE(3s): 0.2609	--FDE(3s): 0.4406
+--ADE(4s): 0.3627	--FDE(4s): 0.6648
+[2025-02-09 01:24:22] Epoch: 29		Loss: 1.726935	Loss Dist.: 1.722267	Loss Uncertainty: 0.004668
+--ADE(1s): 0.1295	--FDE(1s): 0.1324
+--ADE(2s): 0.1810	--FDE(2s): 0.2605
+--ADE(3s): 0.2588	--FDE(3s): 0.4446
+--ADE(4s): 0.3617	--FDE(4s): 0.7045
+[2025-02-09 01:26:25] Epoch: 30		Loss: 1.748036	Loss Dist.: 1.737484	Loss Uncertainty: 0.010552
+--ADE(1s): 0.1399	--FDE(1s): 0.1422
+--ADE(2s): 0.1913	--FDE(2s): 0.2681
+--ADE(3s): 0.2750	--FDE(3s): 0.4753
+--ADE(4s): 0.3898	--FDE(4s): 0.7314
+[2025-02-09 01:28:27] Epoch: 31		Loss: 1.683268	Loss Dist.: 1.696660	Loss Uncertainty: -0.013392
+--ADE(1s): 0.1074	--FDE(1s): 0.1256
+--ADE(2s): 0.1826	--FDE(2s): 0.2979
+--ADE(3s): 0.2838	--FDE(3s): 0.5275
+--ADE(4s): 0.4082	--FDE(4s): 0.8048
+[2025-02-09 01:30:29] Epoch: 32		Loss: 1.498933	Loss Dist.: 1.542005	Loss Uncertainty: -0.043072
+--ADE(1s): 0.1022	--FDE(1s): 0.1147
+--ADE(2s): 0.1643	--FDE(2s): 0.2726
+--ADE(3s): 0.2576	--FDE(3s): 0.5024
+--ADE(4s): 0.3758	--FDE(4s): 0.7726
+[2025-02-09 01:32:31] Epoch: 33		Loss: 1.508306	Loss Dist.: 1.551589	Loss Uncertainty: -0.043283
+--ADE(1s): 0.1164	--FDE(1s): 0.1153
+--ADE(2s): 0.1599	--FDE(2s): 0.2256
+--ADE(3s): 0.2362	--FDE(3s): 0.4171
+--ADE(4s): 0.3408	--FDE(4s): 0.6561
+[2025-02-09 01:34:33] Epoch: 34		Loss: 1.449191	Loss Dist.: 1.514362	Loss Uncertainty: -0.065171
+--ADE(1s): 0.1125	--FDE(1s): 0.1072
+--ADE(2s): 0.1649	--FDE(2s): 0.2508
+--ADE(3s): 0.2509	--FDE(3s): 0.4656
+--ADE(4s): 0.3629	--FDE(4s): 0.7373
+[2025-02-09 01:36:35] Epoch: 35		Loss: 1.411264	Loss Dist.: 1.481038	Loss Uncertainty: -0.069774
+--ADE(1s): 0.1084	--FDE(1s): 0.1043
+--ADE(2s): 0.1528	--FDE(2s): 0.2226
+--ADE(3s): 0.2261	--FDE(3s): 0.4062
+--ADE(4s): 0.3279	--FDE(4s): 0.6524
+[2025-02-09 01:38:37] Epoch: 36		Loss: 1.413563	Loss Dist.: 1.489526	Loss Uncertainty: -0.075963
+--ADE(1s): 0.1169	--FDE(1s): 0.1145
+--ADE(2s): 0.1692	--FDE(2s): 0.2546
+--ADE(3s): 0.2552	--FDE(3s): 0.4737
+--ADE(4s): 0.3697	--FDE(4s): 0.7471
+[2025-02-09 01:40:39] Epoch: 37		Loss: 1.396492	Loss Dist.: 1.478963	Loss Uncertainty: -0.082471
+--ADE(1s): 0.1128	--FDE(1s): 0.1229
+--ADE(2s): 0.1712	--FDE(2s): 0.2697
+--ADE(3s): 0.2578	--FDE(3s): 0.4846
+--ADE(4s): 0.3723	--FDE(4s): 0.7606
+[2025-02-09 01:42:41] Epoch: 38		Loss: 1.368991	Loss Dist.: 1.460026	Loss Uncertainty: -0.091036
+--ADE(1s): 0.1016	--FDE(1s): 0.1118
+--ADE(2s): 0.1620	--FDE(2s): 0.2582
+--ADE(3s): 0.2500	--FDE(3s): 0.4695
+--ADE(4s): 0.3660	--FDE(4s): 0.7469
+[2025-02-09 01:44:43] Epoch: 39		Loss: 1.371238	Loss Dist.: 1.461118	Loss Uncertainty: -0.089880
+--ADE(1s): 0.1450	--FDE(1s): 0.1619
+--ADE(2s): 0.2020	--FDE(2s): 0.2911
+--ADE(3s): 0.2880	--FDE(3s): 0.4981
+--ADE(4s): 0.4029	--FDE(4s): 0.7845
+[2025-02-09 01:46:45] Epoch: 40		Loss: 1.215498	Loss Dist.: 1.336490	Loss Uncertainty: -0.120991
+--ADE(1s): 0.1074	--FDE(1s): 0.1218
+--ADE(2s): 0.1753	--FDE(2s): 0.2956
+--ADE(3s): 0.2791	--FDE(3s): 0.5447
+--ADE(4s): 0.4129	--FDE(4s): 0.8697
+[2025-02-09 01:48:47] Epoch: 41		Loss: 1.222901	Loss Dist.: 1.343662	Loss Uncertainty: -0.120762
+--ADE(1s): 0.1154	--FDE(1s): 0.1204
+--ADE(2s): 0.1677	--FDE(2s): 0.2564
+--ADE(3s): 0.2552	--FDE(3s): 0.4805
+--ADE(4s): 0.3764	--FDE(4s): 0.7705
+[2025-02-09 01:50:49] Epoch: 42		Loss: 1.186320	Loss Dist.: 1.318212	Loss Uncertainty: -0.131892
+--ADE(1s): 0.0968	--FDE(1s): 0.1079
+--ADE(2s): 0.1570	--FDE(2s): 0.2508
+--ADE(3s): 0.2458	--FDE(3s): 0.4563
+--ADE(4s): 0.3640	--FDE(4s): 0.7332
+[2025-02-09 01:52:51] Epoch: 43		Loss: 1.146858	Loss Dist.: 1.290631	Loss Uncertainty: -0.143773
+--ADE(1s): 0.1067	--FDE(1s): 0.1226
+--ADE(2s): 0.1741	--FDE(2s): 0.2939
+--ADE(3s): 0.2790	--FDE(3s): 0.5548
+--ADE(4s): 0.4148	--FDE(4s): 0.8735
+[2025-02-09 01:54:54] Epoch: 44		Loss: 1.159299	Loss Dist.: 1.300920	Loss Uncertainty: -0.141621
+--ADE(1s): 0.1171	--FDE(1s): 0.1468
+--ADE(2s): 0.1997	--FDE(2s): 0.3454
+--ADE(3s): 0.3165	--FDE(3s): 0.6318
+--ADE(4s): 0.4675	--FDE(4s): 1.0031
+[2025-02-09 01:56:56] Epoch: 45		Loss: 1.137665	Loss Dist.: 1.286239	Loss Uncertainty: -0.148574
+--ADE(1s): 0.1023	--FDE(1s): 0.1159
+--ADE(2s): 0.1697	--FDE(2s): 0.2865
+--ADE(3s): 0.2700	--FDE(3s): 0.5208
+--ADE(4s): 0.4009	--FDE(4s): 0.8326
+[2025-02-09 01:58:58] Epoch: 46		Loss: 1.128662	Loss Dist.: 1.284132	Loss Uncertainty: -0.155471
+--ADE(1s): 0.1098	--FDE(1s): 0.1194
+--ADE(2s): 0.1693	--FDE(2s): 0.2687
+--ADE(3s): 0.2615	--FDE(3s): 0.4975
+--ADE(4s): 0.3892	--FDE(4s): 0.8318
+[2025-02-09 02:01:00] Epoch: 47		Loss: 1.096753	Loss Dist.: 1.264279	Loss Uncertainty: -0.167525
+--ADE(1s): 0.1124	--FDE(1s): 0.1288
+--ADE(2s): 0.1821	--FDE(2s): 0.2989
+--ADE(3s): 0.2863	--FDE(3s): 0.5448
+--ADE(4s): 0.4221	--FDE(4s): 0.8732
+[2025-02-09 02:03:02] Epoch: 48		Loss: 1.013909	Loss Dist.: 1.195513	Loss Uncertainty: -0.181603
+--ADE(1s): 0.1090	--FDE(1s): 0.1219
+--ADE(2s): 0.1680	--FDE(2s): 0.2675
+--ADE(3s): 0.2583	--FDE(3s): 0.4922
+--ADE(4s): 0.3829	--FDE(4s): 0.8071
+[2025-02-09 02:05:05] Epoch: 49		Loss: 0.987318	Loss Dist.: 1.178413	Loss Uncertainty: -0.191096
+--ADE(1s): 0.0982	--FDE(1s): 0.1137
+--ADE(2s): 0.1646	--FDE(2s): 0.2771
+--ADE(3s): 0.2637	--FDE(3s): 0.5213
+--ADE(4s): 0.3958	--FDE(4s): 0.8398
+[2025-02-09 02:07:07] Epoch: 50		Loss: 0.978993	Loss Dist.: 1.172150	Loss Uncertainty: -0.193157
+--ADE(1s): 0.1188	--FDE(1s): 0.1272
+--ADE(2s): 0.1777	--FDE(2s): 0.2784
+--ADE(3s): 0.2743	--FDE(3s): 0.5263
+--ADE(4s): 0.4073	--FDE(4s): 0.8620
+[2025-02-09 02:09:09] Epoch: 51		Loss: 0.951160	Loss Dist.: 1.160151	Loss Uncertainty: -0.208991
+--ADE(1s): 0.1003	--FDE(1s): 0.1192
+--ADE(2s): 0.1684	--FDE(2s): 0.2825
+--ADE(3s): 0.2665	--FDE(3s): 0.5144
+--ADE(4s): 0.3983	--FDE(4s): 0.8359
+[2025-02-09 02:11:11] Epoch: 52		Loss: 0.934734	Loss Dist.: 1.146776	Loss Uncertainty: -0.212042
+--ADE(1s): 0.1201	--FDE(1s): 0.1444
+--ADE(2s): 0.1928	--FDE(2s): 0.3161
+--ADE(3s): 0.2975	--FDE(3s): 0.5709
+--ADE(4s): 0.4389	--FDE(4s): 0.9318
+[2025-02-09 02:13:13] Epoch: 53		Loss: 0.938069	Loss Dist.: 1.154492	Loss Uncertainty: -0.216423
+--ADE(1s): 0.1217	--FDE(1s): 0.1382
+--ADE(2s): 0.1879	--FDE(2s): 0.3018
+--ADE(3s): 0.2897	--FDE(3s): 0.5519
+--ADE(4s): 0.4268	--FDE(4s): 0.8943
+[2025-02-09 02:15:15] Epoch: 54		Loss: 0.908284	Loss Dist.: 1.132765	Loss Uncertainty: -0.224481
+--ADE(1s): 0.1304	--FDE(1s): 0.1525
+--ADE(2s): 0.2002	--FDE(2s): 0.3212
+--ADE(3s): 0.3070	--FDE(3s): 0.5810
+--ADE(4s): 0.4484	--FDE(4s): 0.9426
+[2025-02-09 02:17:17] Epoch: 55		Loss: 0.902902	Loss Dist.: 1.129781	Loss Uncertainty: -0.226879
+--ADE(1s): 0.1053	--FDE(1s): 0.1249
+--ADE(2s): 0.1718	--FDE(2s): 0.2830
+--ADE(3s): 0.2738	--FDE(3s): 0.5364
+--ADE(4s): 0.4109	--FDE(4s): 0.8817
+[2025-02-09 02:19:19] Epoch: 56		Loss: 0.824565	Loss Dist.: 1.067850	Loss Uncertainty: -0.243284
+--ADE(1s): 0.1114	--FDE(1s): 0.1324
+--ADE(2s): 0.1798	--FDE(2s): 0.2961
+--ADE(3s): 0.2826	--FDE(3s): 0.5521
+--ADE(4s): 0.4216	--FDE(4s): 0.9101
+[2025-02-09 02:21:21] Epoch: 57		Loss: 0.808276	Loss Dist.: 1.060907	Loss Uncertainty: -0.252632
+--ADE(1s): 0.1199	--FDE(1s): 0.1405
+--ADE(2s): 0.1924	--FDE(2s): 0.3161
+--ADE(3s): 0.3005	--FDE(3s): 0.5823
+--ADE(4s): 0.4448	--FDE(4s): 0.9463
+slurmstepd: error: *** JOB 9832443 ON gcn30 CANCELLED AT 2025-02-09T02:23:15 DUE TO TIME LIMIT ***
+
+JOB STATISTICS
+==============
+Job ID: 9832443
+Cluster: snellius
+User/Group: scur2440/scur2440
+State: TIMEOUT (exit code 0)
+Nodes: 1
+Cores per node: 18
+CPU Utilized: 00:00:01
+CPU Efficiency: 0.00% of 1-12:00:00 core-walltime
+Job Wall-clock time: 02:00:00
+Memory Utilized: 2.91 GB
+Memory Efficiency: 2.42% of 120.00 GB
