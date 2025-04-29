@@ -27,7 +27,7 @@ NewerCollege/
 4_LED_Kitti_6D_Dynamic/visualization/data
 5_LED_Kitti_BetterCheckpoints/visualization/data
 6_LED_Prior/visualization/data
-
+6_LED_Prior/visualization/
 
 /SplaTAM/*
 !/SplaTAM/_prior_integration.py

@@ -27,7 +27,8 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
     """
 
     def __init__(self, dataset: str, dims: int, input_size: int, preds_size: int, training: bool, final_eval: bool, relative:bool=False, normalised:bool=False, 
-                 train_ratio=0.80, eval_ratio=0.10, seed=42, overlapping:bool=False, selected_trajectories:bool=False):
+                 train_ratio=0.80, eval_ratio=0.10, seed=42, overlapping:bool=False, selected_trajectories:bool=False, synthetic_gt:str = 'straight',
+					synthetic_noise:str = 'random_walk'):
         """
         input_size (int): number of poses used as input (past trajectory)
         preds_size (int): nr of poses to be predicted (future trajectory)
@@ -41,10 +42,14 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
         if dataset == 'kitti':
             indices = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
             file_names = [f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{idx}.txt' for idx in indices]
-        elif dataset == 'synthetic': #TODO load synthetic like kitti - so rigid body 3x4 matrix
-            dataset_path = '/home/scur2440/MoTric/Synthetic'
-            gt_file = f'{dataset_path}/RandomNoise/GT_500k_synthetic_poses.txt'
-            noise_file = f'{dataset_path}/RandomNoise/NOISY_500k_synthetic_poses.txt'
+        elif dataset == 'synthetic':
+            dataset_path = '/home/scur2440/MoTric/synthetic_data'
+            gt_type = synthetic_gt #straight, right_curve
+            noise_type = synthetic_noise #random_independent, random_walk, right_bias
+
+            #get file with noisy past and clean gt future
+            noisy_file = f'{dataset_path}/{gt_type}_{noise_type}/synthetic_noisy_past_poses.txt'
+
         elif dataset == 'newer':
             dataset_path = '/home/scur2440/MoTric/NewerCollege'
             file_names = [
@@ -123,9 +128,8 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
 
         ### 1. Load and split data from all trajectories
         if dataset == 'synthetic':
-            SE3_pre_all, SE3_fut_all = load_synthetic_and_split(gt_file, noise_file,input_size,preds_size,overlapping)
+            p_inputs, p_targets, t_inputs, t_targets = load_synthetic_and_split(noisy_file, window_size, input_size, dims, relative, normalised, overlapping)
             print("[WARNING] Relativised / normalised loading not implemented for synthetic dataset. Poses are converted to relative within pipeline (data_preprocess).")
-            p_inputs, p_targets, t_targets = SE3_pre_all, SE3_fut_all, None
         else:    
             p_inputs, p_targets, t_inputs, t_targets = load_all_and_split(dataset, file_names, window_size, input_size, dims, relative, normalised, overlapping) 
             # p_inputs: [num_windows, input_size, 3, 4] p_targets: [num_windows, output_size, 3, 4]
@@ -610,39 +614,66 @@ def quaternion_relative(ref_quat: torch.Tensor, quats: torch.Tensor):
     return quaternion_multiply(ref_conj, quats)
 
 
-def load_synthetic_and_split(file_path_gt: str, file_path_noise: str, input_size: int, preds_size: int, overlapping: bool = True):
-
-    # 1) load full trajectories
-    gt   = load_raw_traj_poses(file_path_gt)     # (T, 3, 4)
-    meas = load_raw_traj_poses(file_path_noise)  # (T, 3, 4)
-    assert gt.shape == meas.shape, "GT & noisy trajectories must be same length"
-
-    T = gt.shape[0]
-    window_size = input_size + preds_size
+def load_synthetic_and_split(noisy_file, window_size, input_size, dims, use_relative=False, use_normalised=False, overlapping=False):
+    """
+    Loads trajectories from pairs of files (noisy, GT) and splits them into windows.
+    
+    Args:
+        file_pairs: List of tuples [(noisy_file, gt_file), ...]
+        window_size: Total window size (input + future)
+        input_size: Number of past frames
+        dims: Dimensions to use
+        use_relative: Whether to use relative transformation
+        use_normalised: Whether to normalise poses
+        overlapping: Whether to use overlapping windows
+    
+    Returns:
+        Tensors for input poses, target poses, input times, target times
+    """
+    # 1) read all poses from the file (skipping blank lines)
+    all_poses = load_raw_traj_poses(noisy_file)  # shape [T_total, 3, 4]
 
     # 2) build windows
-    if overlapping:
-        num_w = T - window_size + 1
-        gt_windows   = torch.stack([gt[i : i+window_size]   for i in range(num_w)])
-        meas_windows = torch.stack([meas[i : i+window_size] for i in range(num_w)])
+    if not overlapping:
+        num_windows = all_poses.shape[0] // window_size
+        windows = torch.stack([
+            all_poses[i*window_size:(i+1)*window_size]
+            for i in range(num_windows)
+        ])  # [num_windows, window_size, 3, 4]
     else:
-        num_w = T // window_size
-        gt_windows   = torch.stack([gt[i*window_size:(i+1)*window_size]   for i in range(num_w)])
-        meas_windows = torch.stack([meas[i*window_size:(i+1)*window_size] for i in range(num_w)])
+        num_windows = all_poses.shape[0] - window_size + 1
+        windows = torch.stack([
+            all_poses[i:i+window_size]
+            for i in range(num_windows)
+        ])  # [num_windows, window_size, 3, 4]
 
-    # 3) slice into past vs future
-    inputs  = meas_windows[:, :input_size]        # (W, input_size, 3,4)
-    targets = gt_windows  [:, input_size:]        # (W, preds_size, 3,4)
+    # 3) optional relative / normalisation (exactly as in your other loaders)
+    if use_relative:
+        windows, _ = to_relative(windows, None, input_size)
+    if use_normalised:
+        windows, _ = to_normalised(windows, None, input_size)
 
-    return inputs, targets
+    # 4) split into past / future
+    p_inputs  = windows[:, :input_size, :, :]   # noisy past
+    p_targets = windows[:, input_size:, :, :]   # clean future
 
+    # 5) collect & concatenate
+    # (here it’s one “file,” so no need for a loop)
+    combined_p_inputs  = p_inputs
+    combined_p_targets = p_targets
 
+    combined_t_inputs = None
+    combined_t_targets = None
+    
+    return combined_p_inputs, combined_p_targets, combined_t_inputs, combined_t_targets
 
 def load_raw_traj_poses(file_path):
     """assumes format [r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz]"""
     poses = []
     with open(file_path, 'r') as f:
         for line in f:
+            if not line.strip():  # Skip empty lines
+                continue
             values = list(map(float, line.strip().split())) #list for line
             SE3 = torch.tensor(values).reshape(3,4) #SE3 matrix without bottom row 0,0,0,1
             poses.append(SE3)
@@ -727,9 +758,6 @@ def load_one_and_split(dataset, file_name, window_size, input_size, dims, use_re
         else:  
             time_windows = None
 
-    # If no further processing is desired, return windows immediately.
-    if Danda == True:
-        return pose_windows, time_windows
 
     # Optionally apply relative transformation and normalisation.
     if use_relative:
@@ -787,37 +815,6 @@ def load_all_and_split(dataset, file_name_list, window_size, input_size, dims, u
 
 
 
-
-def train_custom(p_wins, t_wins, N=3, batch_size = 32):
-    """
-    Window has 13 poses (right now) - first 10 poses would be used as input (mask) and last 3 should be predicted
-    """
-
-    print(p_wins.size())
-    for subtrajectory in p_wins:
-        input_poses = subtrajectory[:-N] #mask poses
-        gt_poses_for_loss = subtrajectory[-N:]
-        
-        print(subtrajectory.size())
-        print(input_poses.size())
-        print(gt_poses_for_loss.size())
-        
-        exit()
-    
-    
-    ### TODO switch to batch training
-    # dataset = TensorDataset(p_wins)  #TensorDataset(p_wins, t_wins)
-    # train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-    # #validation_dataloader = 
-    # #test_dataloader = 
-
-    # for batch_i, poses in enumerate(train_dataloader):
-    #     print(len(poses)) #list of tensors
-    #     print(poses)
-    #     exit()
-
-
 def print_some_stats(future, future_rot=None, translation_dims=3):
     future = future.squeeze(dim=1) #torch.Size([16106, 20, 3])
 
@@ -849,64 +846,30 @@ def print_some_stats(future, future_rot=None, translation_dims=3):
 
 if __name__ == "__main__":
 
-    if Danda == True:
-        traj_idx = '00'
-        p_wins, t_wins = load_one_and_split(traj_idx, 13, 10) # pose windows: N windows, window size, SE3 rows, SE3 columns] , time windows: [N windows, window size]
-        train_danda(p_wins, t_wins, 32, True)
+    dimensions = 9 # possible values: 2, 3, 6 (Lie), 7 (TUM), 9 (6d)
+    dataset = 'synthetic' # possible values: kitti (AD), newer (Pedestrian), spires (Pedestrian), synthetic (pedestrian)
+    print(f'{dimensions}D {dataset.upper()}\n')
+
+    train_dataset = LoadDatasetLeapfrog(dataset=dataset, dims = dimensions, input_size=10, preds_size=22, training=True, final_eval=False, relative=False, normalised=False, overlapping=False, selected_trajectories=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
+    # print(train_dataset.pre_motion_3D[0,0,9,:])
     
-    elif Fully_Custom ==True:
-        train_list = ['00', '01', '02', '03', '04', '05', '06'] 
-        val_list   = ['07', '10'] 
-        test_list  = ['08', '09']
-
-        train_dataset = KITTIDatasetCustom(train_list, 10, 3, True, False) # kitti trajectories to load, input size (n past trajectories), target size (n trajectories to predict), use relative poses/times, use normalised translations/times
-        val_dataset = KITTIDatasetCustom(val_list, 10, 3,  True, False) 
-        test_dataset = KITTIDatasetCustom(test_list, 10, 3,  True, False) 
-
-        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
-        val_loader = DataLoader(val_dataset, batch_size=32, shuffle=True, num_workers=4) #only one trajectory for validation? Bias? TODO
-        test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True, num_workers=4)
-
-        #print(len(train_loader), len(val_loader), len(test_loader)) #Nr of batches: 474 72 177
-
-        for batch in train_loader:
-            print(batch.keys())
-            print("Batch pre-motion shape:", batch['p_inputs_SE3'].shape)  # [B, 10, 3, 4]
-            print("Batch future motion shape:", batch['p_targets_SE3'].shape)  # [B, 3, 3, 4]
-
-            # print(batch['p_inputs_SE3'][0])
-            # print(batch['p_targets_SE3'][0])  
-            # print(batch['t_inputs_SE3'][0])
-            # print(batch['t_targets_SE3'][0])
-
-            exit()
-            break
+    
+    if dimensions==9:
+        print_some_stats(train_dataset.fut_motion_3D[..., :3], train_dataset.fut_motion_3D[..., 3:], 3)
 
     else:
-        dimensions = 3 # possible values: 2, 3, 6 (Lie), 7 (TUM), 9 (6d)
-        dataset = 'synthetic' # possible values: kitti (AD), newer (Pedestrian), spires (Pedestrian), synthetic (pedestrian)
-        print(f'{dimensions}D {dataset.upper()}\n')
+        print_some_stats(train_dataset.fut_motion_3D, None, dimensions)
+    print('Train trajectories:', len(train_dataset)) # 16106 for input_size=10, preds_size=20
+    train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_custom, pin_memory=True)
+    
+    test_dataset = LoadDatasetLeapfrog(dataset=dataset, dims=dimensions, input_size=10, preds_size=20, training=False, final_eval=False, relative=False, normalised=False, overlapping=False, selected_trajectories=False)
+    if dimensions==9:
+        print_some_stats(test_dataset.fut_motion_3D[..., :3], test_dataset.fut_motion_3D[..., 3:], 3)
 
-        train_dataset = LoadDatasetLeapfrog(dataset=dataset, dims = dimensions, input_size=10, preds_size=20, training=True, final_eval=False, relative=True, normalised=False, overlapping=False, selected_trajectories=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
-        # print(train_dataset.pre_motion_3D[0,0,9,:])
-        
-        
-        if dimensions==9:
-            print_some_stats(train_dataset.fut_motion_3D[..., :3], train_dataset.fut_motion_3D[..., 3:], 3)
-
-        else:
-            print_some_stats(train_dataset.fut_motion_3D, None, dimensions)
-        print('Train trajectories:', len(train_dataset)) # 16106 for input_size=10, preds_size=20
-        train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4, collate_fn=seq_collate_custom, pin_memory=True)
-        
-        test_dataset = LoadDatasetLeapfrog(dataset=dataset, dims=dimensions, input_size=10, preds_size=20, training=False, final_eval=False, relative=True, normalised=False, overlapping=False, selected_trajectories=False)
-        if dimensions==9:
-            print_some_stats(test_dataset.fut_motion_3D[..., :3], test_dataset.fut_motion_3D[..., 3:], 3)
-
-        else:
-            print_some_stats(test_dataset.fut_motion_3D, None, dimensions)
-        print('Test trajectories:', len(test_dataset)) # 6776 for input_size=10, preds_size=20
-        test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_custom, pin_memory=True)
+    else:
+        print_some_stats(test_dataset.fut_motion_3D, None, dimensions)
+    print('Test trajectories:', len(test_dataset)) # 6776 for input_size=10, preds_size=20
+    test_loader = DataLoader(test_dataset, batch_size=500, shuffle=True, num_workers=4, collate_fn=seq_collate_custom, pin_memory=True)
 
 
     for batch in train_loader:
@@ -923,3 +886,37 @@ if __name__ == "__main__":
         break
 
 
+
+
+
+
+#### dump
+
+def train_custom(p_wins, t_wins, N=3, batch_size = 32):
+    """
+    Window has 13 poses (right now) - first 10 poses would be used as input (mask) and last 3 should be predicted
+    """
+
+    print(p_wins.size())
+    for subtrajectory in p_wins:
+        input_poses = subtrajectory[:-N] #mask poses
+        gt_poses_for_loss = subtrajectory[-N:]
+        
+        print(subtrajectory.size())
+        print(input_poses.size())
+        print(gt_poses_for_loss.size())
+        
+        exit()
+    
+    
+    ### TODO switch to batch training
+    # dataset = TensorDataset(p_wins)  #TensorDataset(p_wins, t_wins)
+    # train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    # #validation_dataloader = 
+    # #test_dataloader = 
+
+    # for batch_i, poses in enumerate(train_dataloader):
+    #     print(len(poses)) #list of tensors
+    #     print(poses)
+    #     exit()

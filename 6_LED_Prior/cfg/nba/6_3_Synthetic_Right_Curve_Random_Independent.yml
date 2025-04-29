@@ -1,0 +1,49 @@
+# ------------------- General Options -------------------------
+description                  : LED
+results_root_dir             : results
+dataset                      : synthetic
+dimensions                   : 9
+
+# ------------------- Dataset -------------------------
+past_frames                  : 10
+future_frames                : 22
+min_past_frames              : 10
+min_future_frames            : 22
+
+k_preds                      : 20
+
+synthetic_gt              : right_curve #straight, right_curve
+synthetic_noise           : random_independent #random_independent, random_walk, right_bias
+
+
+# motion_dim                   : 3 #not used in code...
+# forecast_dim                 : 3 #not used in code...
+
+traj_mean                    : [14, 7.5] #middle of nba court
+traj_scale                   : 9
+
+relative                     : False
+normalised                   : False
+overfitting                  : False
+selected_trajectories        : False
+
+# ------------------- Model -------------------------
+pretrained_core_denoising_model: './results/checkpoints/base_diffusion_model.p'
+debug                        : False # set to True for early stop in each epoch.
+
+diffusion                    : {
+  steps                      : 150, #50 more diffusion steps
+  beta_start                 : 1.e-4,
+  beta_end                   : 5.e-2,
+  beta_schedule              : 'linear'
+}
+
+# ------------------- Training Parameters -------------------------
+lr                           : 1.e-3 #tenth of previous
+train_batch_size             : 32
+test_batch_size              : 32 #slows testing down a bit compared to default 500
+num_epochs                   : 80
+test_interval                : 1  # Added: evaluate every N epochs
+lr_scheduler                 : 'step'
+decay_step                   : 8
+decay_gamma                  : 0.5 #slightly lower learning rate decay

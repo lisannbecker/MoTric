@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --job-name=Str_RB
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=3:00:00
+#SBATCH --output=6_3_9D_Synthetic_Straight_Right_Bias%A.out
+
+
+source activate led
+module load 2022
+module load CUDA/11.7.0
+cd $HOME/MoTric/6_LED_Prior/
+python main_prior.py --cfg 6_3_Synthetic_Straight_Right_Bias --info 6_3_9D_Synthetic_Straight_Right_Bias --dataset synthetic

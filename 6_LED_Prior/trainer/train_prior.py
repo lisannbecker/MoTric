@@ -104,7 +104,9 @@ class Trainer:
 					eval_ratio=0.10,
 					seed=42,
 					overlapping = self.cfg.overfitting,
-					selected_trajectories=self.cfg.selected_trajectories
+					selected_trajectories=self.cfg.selected_trajectories,
+					synthetic_gt = self.cfg.synthetic_gt,
+					synthetic_noise = self.cfg.synthetic_noise
 				)
 				self.train_loader = DataLoader(
 					train_dset,
@@ -128,7 +130,9 @@ class Trainer:
 					eval_ratio=0.10,
 					seed=42,
 					overlapping = self.cfg.overfitting,
-					selected_trajectories=self.cfg.selected_trajectories
+					selected_trajectories=self.cfg.selected_trajectories,
+					synthetic_gt = self.cfg.synthetic_gt,
+					synthetic_noise = self.cfg.synthetic_noise
 				)
 				self.test_loader = DataLoader(
 					test_dset,
@@ -179,7 +183,9 @@ class Trainer:
 					eval_ratio=0.10,
 					seed=42,
 					overlapping = self.cfg.overfitting,
-					selected_trajectories=self.cfg.selected_trajectories
+					selected_trajectories=self.cfg.selected_trajectories,
+					synthetic_gt = self.cfg.synthetic_gt,
+					synthetic_noise = self.cfg.synthetic_noise
 				)
 				self.test_loader = DataLoader(
 					test_dset,
@@ -316,7 +322,7 @@ class Trainer:
 		
 		torch.save(checkpoint, ckpt_path)
 		self.best_checkpoint_path = ckpt_path
-		print_log(f"[INFO] New best model! Checkpoint saved to {ckpt_path}", self.log)
+		print_log(f"[INFO] New best model (ATE)! Checkpoint saved to {ckpt_path}", self.log)
 
 	def load_checkpoint(self, checkpoint_path):
 		"""
@@ -488,24 +494,50 @@ class Trainer:
 			if (epoch + 1) % self.cfg.test_interval == 0:
 				performance, samples= self._test_single_epoch() #average_euclidean = average total distance start to finish - to contextualise how good the FDE and ADE are
 
-				#print ADE/FDE of timesteps that are a multiple of 5 and final timestep ADE/FDE
+				# Print ADE/FDE metrics as before
 				timesteps = list(range(5, self.cfg.future_frames, 5))
 				if not timesteps or timesteps[-1] != self.cfg.future_frames:
 					timesteps.append(self.cfg.future_frames)
-				
-
-				for i, time_i in enumerate(timesteps): #self.cfg.future_frames
+				for i, time_i in enumerate(timesteps):
 					print_log('--ADE ({} time steps): {:.4f}\t--FDE ({} time steps): {:.4f}'.format(
 						time_i, performance['ADE'][i]/samples,
 						time_i, performance['FDE'][i]/samples), self.log)
-
-				#save model if it's the best so far
-				ade_final_pose = performance['ADE'][-1]/samples
+				
+				# Print new ATE metrics
+				print_log('--ATE translation: {:.4f}'.format(performance['ATE_trans']), self.log)
+				
+				# Update best model selection to include ATE if desired
+				ate_trans = performance['ATE_trans']
+				ade_final = performance['ADE'][-1]/samples
+				
 				if epoch == 0:
-					best_ade = ade_final_pose
-				elif ade_final_pose < best_ade:
-					best_ade = ade_final_pose
+					best_ate = ate_trans
+					best_ade = ade_final
+				elif ate_trans < best_ate:  # Use ATE_trans as primary metric
+					best_ate = ate_trans
 					self.save_checkpoint(epoch+1)
+				# elif ade_final < best_ade:  # Or keep using ADE as fallback
+				# 	best_ade = ade_final
+				# 	self.save_checkpoint(epoch+1)
+					
+				#print ADE/FDE of timesteps that are a multiple of 5 and final timestep ADE/FDE
+				# timesteps = list(range(5, self.cfg.future_frames, 5))
+				# if not timesteps or timesteps[-1] != self.cfg.future_frames:
+				# 	timesteps.append(self.cfg.future_frames)
+				
+
+				# for i, time_i in enumerate(timesteps): #self.cfg.future_frames
+				# 	print_log('--ADE ({} time steps): {:.4f}\t--FDE ({} time steps): {:.4f}'.format(
+				# 		time_i, performance['ADE'][i]/samples,
+				# 		time_i, performance['FDE'][i]/samples), self.log)
+
+				# #save model if it's the best so far
+				# ade_final_pose = performance['ADE'][-1]/samples
+				# if epoch == 0:
+				# 	best_ade = ade_final_pose
+				# elif ade_final_pose < best_ade:
+				# 	best_ade = ade_final_pose
+				# 	self.save_checkpoint(epoch+1)
 
 			self.scheduler_model.step()
 
@@ -1058,20 +1090,31 @@ class Trainer:
 		loss_total, loss_dt, loss_dc, loss_trans, loss_rot, count = 0, 0, 0, 0, 0,0
 		#LB 3D addition to reshape tensors 
 		
-		for data in self.train_loader:
-			# print("data['fut_motion_3D'].shape: ", data['fut_motion_3D'].shape)
+		for i, data in enumerate(self.train_loader):
+			# torch.set_printoptions(
+			# 	precision=4,   # number of digits after the decimal
+			# 	sci_mode=False # turn off scientific (e+) notation
+			# )
+			# print(f"first traj all poses (pre): ", data['pre_motion_3D'][0,0,:,:]) #first traj all poses (pre) (B, A, T, D)
+			# print(f"first traj all poses (fut): ", data['fut_motion_3D'][0,0,:,:]) #first traj all poses (fut)
+			# exit()
 			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data) # past_traj =(past_traj_abs, past_traj_rel, past_traj_vel)
+			# if i in [0,1]:
+			# 	print("past_traj[0,0,:] on bad batch:", past_traj[0,0,:].detach().cpu())
 			#print('fut_traj:', fut_traj[0,0,:]) #first fut timestep
 
 
 			# print('traj_mask:', traj_mask.size()) # [32, 32]
-			# print('past_traj:', past_traj[0]) # [32, 15, D+3] 
+			# print('past_traj processed:', past_traj[0]) # [32, T, D+3] 
+			# print('fut_traj processed:', fut_traj[0]) # [32, T, D+3] < GT poses for future_frames timesteps
 			# exit()
-			# print('fut_traj:', fut_traj.size()) # [32, 8, D+3] < GT poses for future_frames timesteps
-
-
+			
 			### 1. Leapfrogging Denoising (LED initializer outputs): instead of full denoising process, predicts intermediate, already denoised trajectory 
+			### the 9d nan issue happens here on the second batch in the train loop
 			sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask) #offset, mean, stdev
+			# print("— raw_pred[0,0,0,:] pre‐reparam:", sample_prediction[0,0,0,:].detach().cpu().numpy())
+			# print("— mean_est[0,:]           :", mean_estimation[0,:].detach().cpu().numpy())
+			# print("— var_est[0,:]            :", variance_estimation[0,:]e.dtach().cpu().numpy())
 			#uses the past trajectory (and possibly social context) to produce a mean and variance for the future trajectory - sampled from to get candidate future trajectories next
 			#sample prediction: provides the normalized offsets Sbθ,k that, when scaled and added to the mean, yield the final candidate trajectories
 
@@ -1086,19 +1129,31 @@ class Trainer:
 			# sample_prediction = variance_scale[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None] 
 
 			# Reparameterisation with uncertainty (original)
+			# denom = sample_prediction.std(dim=1).mean(dim=(1,2))  # a single scalar per batch element
+			# with torch.no_grad():
+			# 	denom = sample_prediction.std(dim=1).mean(dim=(1,2))  # shape [B]
+			# 	print("variance head:", variance_estimation.min().item(), variance_estimation.max().item())
+			# 	print("denom min/mean/max:", denom.min().item(), denom.mean().item(), denom.max().item())
+
+
 			sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
-			
+
+			# print('sample_prediction')
+			# print(sample_prediction[0,0,0,:]) #check if prediction is 9D
 			# print('This shouldnt be super small - if it is, this explains outliers:', sample_prediction.std(dim=1).mean(dim=(1, 2)))
 			
 			# Add the mean estimation to the scaled normalized offsets / center predictions around the mean (each candidate trajectory is expressed as a deviation from the mean)
+
 			loc = sample_prediction + mean_estimation[:, None] #prediction before denoising
+			# print("— loc min/max:", loc.min().item(), loc.max().item())
+
 
 			# print('sample_prediction:', sample_prediction.size())
 			# print('loc:', loc.size()) #[32, 24, 24, 3]
 
 			### 2. Denoising (Denoising Module): Generate K alternative future trajectories - multi-modal
 			k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #(B, K, T, 2/3/6/7/9)
-			# print(k_alternative_preds[0,0,0,:])
+			# print('k_alternative_preds:',k_alternative_preds[0,0,0,:])
 
 			
 			# print('k_alternative_preds:', k_alternative_preds[0,:,0,:2]) #check if prediction is 9D
@@ -1293,7 +1348,8 @@ class Trainer:
 			
 		performance = {
 			'ADE': [0] * len(timesteps),
-			'FDE': [0] * len(timesteps)
+			'FDE': [0] * len(timesteps),
+			'ATE_trans': 0
 		}
 		# performance = { 'FDE': [0, 0, 0, 0],
 		# 				'ADE': [0, 0, 0, 0]}
@@ -1318,14 +1374,30 @@ class Trainer:
 				pred_traj = self.p_sample_loop_accelerate(past_traj, traj_mask, loc)
 
 				#fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.future_frames, 1, 1) #expand GT to match k_preds dimension (B, 1, T, 6)
-				fut_traj = fut_traj.unsqueeze(1).repeat(1, self.cfg.k_preds, 1, 1) # (B, K, T, D) (?)
+				fut_traj_expanded = fut_traj.unsqueeze(1).repeat(1, self.cfg.k_preds, 1, 1)  # (B, K, T, D)
+				
+				# ATE metric (translation only)
+				ate_results = self.compute_ate(
+					pred_traj, 
+					fut_traj.unsqueeze(1),  # Add K dimension to ground truth
+					self.cfg.dimensions,
+					self.traj_scale
+				)
 
+				# Add ATE results to performance metrics
+				performance['ATE_trans'] += ate_results['ate_trans'] * batch_size
 
 				# ---- Translation Error Metrics (already in your code) ----
-				pred_traj_trans = pred_traj[..., :3]  # (B, K, T, 3)
-				fut_traj_trans = fut_traj[..., :3]      # (B, 1, T, 3)
-
-				distances = torch.norm(fut_traj_trans - pred_traj_trans, dim=-1) * self.traj_scale ## Euclidian translation errors (B, K, T)
+				# Calculate traditional ADE/FDE metrics (from your original code)
+				# Extract translational components for ADE/FDE calculation
+				if self.cfg.dimensions in [2, 3]:
+					pred_traj_trans = pred_traj
+					fut_traj_trans = fut_traj.unsqueeze(1).repeat(1, self.cfg.k_preds, 1, 1)
+				else:
+					pred_traj_trans = pred_traj[..., :3]  # (B, K, T, 3)
+					fut_traj_trans = fut_traj.unsqueeze(1).repeat(1, self.cfg.k_preds, 1, 1)[..., :3]  # (B, K, T, 3)
+				
+				distances = torch.norm(fut_traj_trans - pred_traj_trans, dim=-1) * self.traj_scale  ## Euclidian translation errors (B, K, T)
 				# print('distances: ', distances)
 
 
@@ -1346,7 +1418,62 @@ class Trainer:
 					performance['FDE'][i] += fde.item()
 				samples += distances.shape[0]
 			
+		# Normalize ATE metrics by number of samples
+		performance['ATE_trans'] /= samples
+
 		return performance, samples
+
+	def compute_ate(self, pred_trajectories, gt_trajectory, dimensions, traj_scale=1.0):
+		"""
+		Compute Absolute Trajectory Error (ATE) between predicted trajectories and ground truth.
+		Focus on translational error only, regardless of pose representation.
+		
+		Args:
+			pred_trajectories: Predicted trajectories of shape (B, K, T, D) where:
+				B = batch size
+				K = number of predictions per sample
+				T = number of timesteps
+				D = dimensions (2/3/6/7/9)
+			gt_trajectory: Ground truth trajectory of shape (B, 1, T, D)
+			dimensions: Dimensionality of the pose (2/3/6/7/9)
+			traj_scale: Scale factor used during preprocessing
+		
+		Returns:
+			Dictionary containing ATE metric:
+			- 'ate_trans': Translational ATE (for all dimension types)
+		"""
+		# Initialize variables to store results
+		B, K, T, D = pred_trajectories.shape
+		results = {}
+		
+		# Extract translational component based on pose representation
+		if dimensions in [2, 3]:
+			# For 2D/3D trajectories, the entire representation is positional
+			pred_trans = pred_trajectories * traj_scale  # (B, K, T, 2/3)
+			gt_trans = gt_trajectory * traj_scale  # (B, 1, T, 2/3)
+		else:
+			# For 6D/7D/9D poses, extract just the translation part (first 3 dimensions)
+			pred_trans = pred_trajectories[..., :3] * traj_scale  # (B, K, T, 3)
+			gt_trans = gt_trajectory[..., :3] * traj_scale  # (B, 1, T, 3)
+		
+		# Compute translational errors for each candidate trajectory
+		trans_errors = torch.norm(gt_trans - pred_trans, dim=-1)  # (B, K, T)
+		
+		# Select the best prediction among K candidates based on translation error only
+		k_indices = trans_errors.mean(dim=-1).argmin(dim=-1)  # (B,)
+		
+		# Extract best trajectory for each sample
+		batch_indices = torch.arange(B).to(pred_trajectories.device)
+		best_trans = pred_trans[batch_indices, k_indices]  # (B, T, D_trans)
+		
+		# Compute RMSE of the best trajectory compared to GT
+		# This is the true ATE - square root of the mean squared error across entire trajectory
+		ate_trans = torch.sqrt(((best_trans - gt_trans.squeeze(1))**2).sum(dim=-1).mean(dim=-1))  # (B,)
+		
+		# Average across the batch
+		results['ate_trans'] = ate_trans.mean().item()
+		
+		return results
 
 
 	def test_single_model(self, checkpoint_path = None):
@@ -1360,7 +1487,10 @@ class Trainer:
 		# checkpoint_path = './results/6_Developing_Synthetic/6_Developing_Synthetic/models/best_checkpoint_epoch_61.pth'
 		# checkpoint_path = './results/6_Developing_Synthetic_Overfitting/6_Developing_Synthetic_Overfitting/models/best_checkpoint_epoch_57.pth'
 		#checkpoint_path = './results/6_HighData_Synthetic/6_HighData_Synthetic/models/best_checkpoint_epoch_38.pth'
-		checkpoint_path = './results/6_HighData_Synthetic/6_500kHighData_Synthetic/models/best_checkpoint_epoch_15.pth'
+		# checkpoint_path = './results/6_HighData_Synthetic/6_500kHighData_Synthetic/models/best_checkpoint_epoch_15.pth'
+		# checkpoint_path = './results/6_2_Testing_GT-N-Synthetic/FirstTry/models/best_checkpoint_epoch_9.pth'
+		# checkpoint_path = './results/6_2_Testing_Synthetic/6_2_Testing_Synthetic/models/best_checkpoint_epoch_19.pth'
+		checkpoint_path = './results/6_2_Testing_Synthetic/6_2_Testing_Synthetic_6D/models/best_checkpoint_epoch_25.pth'
 		experiment_name = checkpoint_path.split('/')[3]
 
 		if checkpoint_path is not None:

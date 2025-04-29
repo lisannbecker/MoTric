@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --job-name=RCur_RI
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=3:00:00
+#SBATCH --output=6_3_9D_Synthetic_Right_Curve_Random_Independent%A.out
+
+
+source activate led
+module load 2022
+module load CUDA/11.7.0
+cd $HOME/MoTric/6_LED_Prior/
+python main_prior.py --cfg 6_3_Synthetic_Right_Curve_Random_Independent --info 6_3_9D_Synthetic_Right_Curve_Random_Independent --dataset synthetic
