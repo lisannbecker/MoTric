@@ -1423,10 +1423,12 @@ class Trainer:
 
 		return performance, samples
 
-	def compute_ate(self, pred_trajectories, gt_trajectory, dimensions, traj_scale=1.0):
+	def compute_ate_old(self, pred_trajectories, gt_trajectory, dimensions, traj_scale=1.0):
 		"""
 		Compute Absolute Trajectory Error (ATE) between predicted trajectories and ground truth.
-		Focus on translational error only, regardless of pose representation.
+		Translation error only, regardless of pose dimension.
+
+		Without alignment
 		
 		Args:
 			pred_trajectories: Predicted trajectories of shape (B, K, T, D) where:
@@ -1475,6 +1477,119 @@ class Trainer:
 		
 		return results
 
+	def compute_ate(self, pred_trajectories, gt_trajectory, dimensions, traj_scale=1.0, align=False):
+		"""
+		Compute Absolute Trajectory Error (ATE) between predicted trajectories and ground truth.
+		Translation error only, regardless of pose dimension.
+		
+		Args:
+			pred_trajectories: Predicted trajectories of shape (B, K, T, D) where:
+				B = batch size
+				K = number of predictions per sample
+				T = number of timesteps
+				D = dimensions (2/3/6/7/9)
+			gt_trajectory: Ground truth trajectory of shape (B, 1, T, D)
+			dimensions: Dimensionality of the pose (2/3/6/7/9)
+			traj_scale: Scale factor used during preprocessing
+			align: Whether to align trajectories before computing error (default: False)
+		
+		Returns:
+			Dictionary containing ATE metric:
+			- 'ate_trans': Translational ATE (for all dimension types)
+		"""
+		# Initialize variables to store results
+		B, K, T, D = pred_trajectories.shape
+		results = {}
+		
+		# Extract translational component based on pose representation
+		if dimensions in [2, 3]:
+			# For 2D/3D trajectories, the entire representation is positional
+			pred_trans = pred_trajectories * traj_scale  # (B, K, T, 2/3)
+			gt_trans = gt_trajectory * traj_scale  # (B, 1, T, 2/3)
+		else:
+			# For 6D/7D/9D poses, extract just the translation part (first 3 dimensions)
+			pred_trans = pred_trajectories[..., :3] * traj_scale  # (B, K, T, 3)
+			gt_trans = gt_trajectory[..., :3] * traj_scale  # (B, 1, T, 3)
+		
+		# Compute translational errors for each candidate trajectory
+		if align:
+			# Align each predicted trajectory to ground truth before computing error
+			aligned_pred_trans = []
+			for b in range(B):
+				for k in range(K):
+					# Extract single trajectory
+					pred_traj = pred_trans[b, k]  # (T, 2/3)
+					gt_traj = gt_trans[b, 0]      # (T, 2/3)
+					
+					# Align trajectory using rigid transformation (rotation + translation)
+					aligned_traj = self.ade_align_trajectory(pred_traj, gt_traj)
+					aligned_pred_trans.append(aligned_traj)
+			
+			# Reshape back to original format
+			aligned_pred_trans = torch.stack(aligned_pred_trans, dim=0)
+			aligned_pred_trans = aligned_pred_trans.view(B, K, T, -1)
+			
+			# Compute errors using aligned trajectories
+			trans_errors = torch.norm(gt_trans - aligned_pred_trans, dim=-1)  # (B, K, T)
+		else:
+			# Compute errors directly without alignment
+			trans_errors = torch.norm(gt_trans - pred_trans, dim=-1)  # (B, K, T)
+		
+		# Select the best prediction among K candidates based on translation error only
+		k_indices = trans_errors.mean(dim=-1).argmin(dim=-1)  # (B,)
+		
+		# Extract best trajectory for each sample
+		batch_indices = torch.arange(B).to(pred_trajectories.device)
+		if align:
+			best_trans = aligned_pred_trans[batch_indices, k_indices]  # (B, T, D_trans)
+		else:
+			best_trans = pred_trans[batch_indices, k_indices]  # (B, T, D_trans)
+		
+		# Compute RMSE of the best trajectory compared to GT
+		# This is the true ATE - square root of the mean squared error across entire trajectory
+		ate_trans = torch.sqrt(((best_trans - gt_trans.squeeze(1))**2).sum(dim=-1).mean(dim=-1))  # (B,)
+		
+		# Average across the batch
+		results['ate_trans'] = ate_trans.mean().item()
+		
+		return results
+
+	def ade_align_trajectory(self, pred_traj, gt_traj):
+		"""
+		Align a predicted trajectory to ground truth using Umeyama's method.
+		
+		Args:
+			pred_traj: Predicted trajectory of shape (T, D)
+			gt_traj: Ground truth trajectory of shape (T, D)
+			
+		Returns:
+			Aligned predicted trajectory of shape (T, D)
+		"""
+		# Center both trajectories (subtract mean)
+		pred_centered = pred_traj - pred_traj.mean(dim=0, keepdim=True)
+		gt_centered = gt_traj - gt_traj.mean(dim=0, keepdim=True)
+		
+		# Get translation components
+		t_gt = gt_traj.mean(dim=0)
+		t_pred = pred_traj.mean(dim=0)
+		
+		# Compute optimal rotation (simplified Umeyama's method for 2D/3D)
+		# For 2D/3D points, we can use a simpler approach than full SVD
+		W = torch.matmul(pred_centered.t(), gt_centered)
+		U, _, Vt = torch.linalg.svd(W)
+		
+		# Ensure proper rotation matrix (handle reflection case)
+		S = torch.eye(W.shape[0], device=pred_traj.device)
+		if torch.det(torch.matmul(U, Vt)) < 0:
+			S[-1, -1] = -1
+		
+		# Compute rotation matrix
+		R = torch.matmul(torch.matmul(U, S), Vt)
+		
+		# Apply transformation: R(x-t_pred) + t_gt
+		aligned_traj = torch.matmul(pred_centered, R.t()) + t_gt
+		
+		return aligned_traj
 
 	def test_single_model(self, checkpoint_path = None):
 		# checkpoint_path = './results/5_Experiments/checkpoint_rework/models/checkpoint_epoch_40.pth'
@@ -1490,7 +1605,16 @@ class Trainer:
 		# checkpoint_path = './results/6_HighData_Synthetic/6_500kHighData_Synthetic/models/best_checkpoint_epoch_15.pth'
 		# checkpoint_path = './results/6_2_Testing_GT-N-Synthetic/FirstTry/models/best_checkpoint_epoch_9.pth'
 		# checkpoint_path = './results/6_2_Testing_Synthetic/6_2_Testing_Synthetic/models/best_checkpoint_epoch_19.pth'
-		checkpoint_path = './results/6_2_Testing_Synthetic/6_2_Testing_Synthetic_6D/models/best_checkpoint_epoch_25.pth'
+		# checkpoint_path = './results/6_2_Testing_Synthetic/6_2_Testing_Synthetic_6D/models/best_checkpoint_epoch_25.pth'
+
+		#Synthetic
+		# checkpoint_path = './results/6_3_Synthetic_Right_Curve_Random_Independent/6_3_9D_Synthetic_Right_Curve_Random_Independent/models/best_checkpoint_epoch_39.pth'
+		#checkpoint_path = './results/6_3_Synthetic_Right_Curve_Random_Walk/6_3_9D_Synthetic_Right_Curve_Random_Walk/models/best_checkpoint_epoch_25.pth'
+		#checkpoint_path = './results/6_3_Synthetic_Right_Curve_Right_Bias/6_3_9D_Synthetic_Right_Curve_Right_Bias/models/best_checkpoint_epoch_38.pth'
+		# checkpoint_path = './results/6_3_Synthetic_Straight_Random_Independent/6_3_9D_Synthetic_Straight_Random_Independent/models/best_checkpoint_epoch_23.pth'
+		# checkpoint_path = './results/6_3_Synthetic_Straight_Random_Walk/6_3_9D_Synthetic_Straight_Random_Walk/models/best_checkpoint_epoch_14.pth'
+		checkpoint_path = './results/6_3_Synthetic_Straight_Right_Bias/6_3_9D_Synthetic_Straight_Right_Bias/models/best_checkpoint_epoch_29.pth'
+
 		experiment_name = checkpoint_path.split('/')[3]
 
 		if checkpoint_path is not None:

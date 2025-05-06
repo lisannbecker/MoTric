@@ -1,0 +1,386 @@
+/home/scur2440/.conda/envs/splatam/lib/python3.10/site-packages/torch/nn/modules/transformer.py:385: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.self_attn.batch_first was not True(use batch_first for better inference performance)
+  warnings.warn(
+System Paths:
+/gpfs/home2/scur2440/MoTric/SplaTAM
+/gpfs/home2/scur2440/MoTric/SplaTAM/scripts
+/home/scur2440/.conda/envs/splatam/lib/python310.zip
+/home/scur2440/.conda/envs/splatam/lib/python3.10
+/home/scur2440/.conda/envs/splatam/lib/python3.10/lib-dynload
+/home/scur2440/.conda/envs/splatam/lib/python3.10/site-packages
+Seed set to: 0 (type: <class 'int'>)
+Loaded Config:
+{'workdir': './experiments/Replica', 'run_name': 'room0_0', 'seed': 0, 'primary_device': 'cuda:0', 'map_every': 1, 'keyframe_every': 5, 'mapping_window_size': 24, 'report_global_progress_every': 500, 'eval_every': 5, 'scene_radius_depth_ratio': 3, 'mean_sq_dist_method': 'projective', 'gaussian_distribution': 'isotropic', 'report_iter_progress': False, 'load_checkpoint': False, 'checkpoint_time_idx': 0, 'save_checkpoints': False, 'checkpoint_interval': 100, 'use_wandb': False, 'wandb': {'entity': 'theairlab', 'project': 'SplaTAM', 'group': 'Replica', 'name': 'room0_0', 'save_qual': False, 'eval_save_qual': True}, 'data': {'basedir': './data/Replica', 'gradslam_data_cfg': './configs/data/replica.yaml', 'sequence': 'room0', 'desired_image_height': 680, 'desired_image_width': 1200, 'start': 0, 'end': -1, 'stride': 1, 'num_frames': -1}, 'tracking': {'use_gt_poses': False, 'forward_prop': True, 'num_iters': 40, 'use_sil_for_loss': True, 'sil_thres': 0.99, 'use_l1': True, 'ignore_outlier_depth_loss': False, 'loss_weights': {'im': 0.5, 'depth': 1.0}, 'lrs': {'means3D': 0.0, 'rgb_colors': 0.0, 'unnorm_rotations': 0.0, 'logit_opacities': 0.0, 'log_scales': 0.0, 'cam_unnorm_rots': 0.0004, 'cam_trans': 0.002}, 'use_depth_loss_thres': False, 'depth_loss_thres': 100000, 'visualize_tracking_loss': False}, 'mapping': {'num_iters': 60, 'add_new_gaussians': True, 'sil_thres': 0.5, 'use_l1': True, 'use_sil_for_loss': False, 'ignore_outlier_depth_loss': False, 'loss_weights': {'im': 0.5, 'depth': 1.0}, 'lrs': {'means3D': 0.0001, 'rgb_colors': 0.0025, 'unnorm_rotations': 0.001, 'logit_opacities': 0.05, 'log_scales': 0.001, 'cam_unnorm_rots': 0.0, 'cam_trans': 0.0}, 'prune_gaussians': True, 'pruning_dict': {'start_after': 0, 'remove_big_after': 0, 'stop_after': 20, 'prune_every': 20, 'removal_opacity_threshold': 0.005, 'final_removal_opacity_threshold': 0.005, 'reset_opacities': False, 'reset_opacities_every': 500}, 'use_gaussian_splatting_densification': False, 'densify_dict': {'start_after': 500, 'remove_big_after': 3000, 'stop_after': 5000, 'densify_every': 100, 'grad_thresh': 0.0002, 'num_to_split_into': 2, 'removal_opacity_threshold': 0.005, 'final_removal_opacity_threshold': 0.005, 'reset_opacities_every': 3000}}, 'viz': {'render_mode': 'color', 'offset_first_viz_cam': True, 'show_sil': False, 'visualize_cams': True, 'viz_w': 600, 'viz_h': 340, 'viz_near': 0.01, 'viz_far': 100.0, 'view_scale': 2, 'viz_fps': 5, 'enter_interactive_post_online': True}}
+Loading Dataset ...
+[INFO] Initialised Motion Prior Integration
+  0%|          | 0/2000 [00:00<?, ?it/s]
+Tracking Result Time Step: 0:   0%|          | 0/1 [00:00<?, ?it/s][A
+Tracking Result Time Step: 0:   0%|          | 0/1 [00:00<?, ?it/s, Time-Step: 0 | Rel Pose Error: 0.0 | Pose Error: 0.0 | ATE RMSE=0.0][ATracking Result Time Step: 0: 100%|██████████| 1/1 [00:00<00:00, 10.43it/s, Time-Step: 0 | Rel Pose Error: 0.0 | Pose Error: 0.0 | ATE RMSE=0.0]
+
+Selected Keyframes at Frame 0: [0]
+
+Mapping Time Step: 0:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 0:   2%|▏         | 1/60 [00:00<00:08,  6.85it/s][A
+Mapping Time Step: 0:   7%|▋         | 4/60 [00:00<00:03, 16.45it/s][A
+Mapping Time Step: 0:  13%|█▎        | 8/60 [00:00<00:02, 24.80it/s][A
+Mapping Time Step: 0:  20%|██        | 12/60 [00:00<00:01, 29.16it/s][A
+Mapping Time Step: 0:  27%|██▋       | 16/60 [00:00<00:01, 31.78it/s][A
+Mapping Time Step: 0:  33%|███▎      | 20/60 [00:00<00:01, 33.38it/s][A
+Mapping Time Step: 0:  40%|████      | 24/60 [00:00<00:01, 33.39it/s][A
+Mapping Time Step: 0:  47%|████▋     | 28/60 [00:00<00:00, 34.46it/s][A
+Mapping Time Step: 0:  53%|█████▎    | 32/60 [00:01<00:00, 35.28it/s][A
+Mapping Time Step: 0:  60%|██████    | 36/60 [00:01<00:00, 35.91it/s][A
+Mapping Time Step: 0:  67%|██████▋   | 40/60 [00:01<00:00, 36.41it/s][A
+Mapping Time Step: 0:  73%|███████▎  | 44/60 [00:01<00:00, 36.81it/s][A
+Mapping Time Step: 0:  80%|████████  | 48/60 [00:01<00:00, 37.16it/s][A
+Mapping Time Step: 0:  87%|████████▋ | 52/60 [00:01<00:00, 37.45it/s][A
+Mapping Time Step: 0:  93%|█████████▎| 56/60 [00:01<00:00, 37.67it/s][A
+Mapping Time Step: 0: 100%|██████████| 60/60 [00:01<00:00, 37.84it/s][AMapping Time Step: 0: 100%|██████████| 60/60 [00:01<00:00, 33.72it/s]
+
+Mapping Result Time Step: 0:   0%|          | 0/1 [00:00<?, ?it/s][A
+Mapping Result Time Step: 0:   0%|          | 0/1 [00:00<?, ?it/s, Time-Step: 0 | Frame 0 | PSNR: 40.31412 | Depth RMSE: 0.002963851 | L1=0.002963851][AMapping Result Time Step: 0: 100%|██████████| 1/1 [00:00<00:00, 52.34it/s, Time-Step: 0 | Frame 0 | PSNR: 40.31412 | Depth RMSE: 0.002963851 | L1=0.002963851]
+  0%|          | 1/2000 [00:02<1:08:00,  2.04s/it]
+Tracking Time Step: 1:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 1:  10%|█         | 4/40 [00:00<00:00, 37.42it/s][A
+Tracking Time Step: 1:  20%|██        | 8/40 [00:00<00:00, 38.74it/s][A
+Tracking Time Step: 1:  30%|███       | 12/40 [00:00<00:00, 39.30it/s][A
+Tracking Time Step: 1:  40%|████      | 16/40 [00:00<00:00, 39.55it/s][A
+Tracking Time Step: 1:  50%|█████     | 20/40 [00:00<00:00, 39.66it/s][A
+Tracking Time Step: 1:  60%|██████    | 24/40 [00:00<00:00, 39.75it/s][A
+Tracking Time Step: 1:  70%|███████   | 28/40 [00:00<00:00, 39.80it/s][A
+Tracking Time Step: 1:  80%|████████  | 32/40 [00:00<00:00, 39.86it/s][A
+Tracking Time Step: 1:  90%|█████████ | 36/40 [00:00<00:00, 39.85it/s][A
+Tracking Time Step: 1: 100%|██████████| 40/40 [00:01<00:00, 39.86it/s][ATracking Time Step: 1: 100%|██████████| 40/40 [00:01<00:00, 39.62it/s]
+
+Selected Keyframes at Frame 1: [0, 1]
+
+Mapping Time Step: 1:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 1:   7%|▋         | 4/60 [00:00<00:01, 38.65it/s][A
+Mapping Time Step: 1:  13%|█▎        | 8/60 [00:00<00:01, 38.45it/s][A
+Mapping Time Step: 1:  20%|██        | 12/60 [00:00<00:01, 38.46it/s][A
+Mapping Time Step: 1:  27%|██▋       | 16/60 [00:00<00:01, 38.50it/s][A
+Mapping Time Step: 1:  33%|███▎      | 20/60 [00:00<00:01, 38.59it/s][A
+Mapping Time Step: 1:  40%|████      | 24/60 [00:00<00:00, 37.41it/s][A
+Mapping Time Step: 1:  47%|████▋     | 28/60 [00:00<00:00, 37.95it/s][A
+Mapping Time Step: 1:  53%|█████▎    | 32/60 [00:00<00:00, 38.37it/s][A
+Mapping Time Step: 1:  60%|██████    | 36/60 [00:00<00:00, 38.68it/s][A
+Mapping Time Step: 1:  67%|██████▋   | 40/60 [00:01<00:00, 38.95it/s][A
+Mapping Time Step: 1:  73%|███████▎  | 44/60 [00:01<00:00, 39.18it/s][A
+Mapping Time Step: 1:  80%|████████  | 48/60 [00:01<00:00, 39.32it/s][A
+Mapping Time Step: 1:  87%|████████▋ | 52/60 [00:01<00:00, 39.46it/s][A
+Mapping Time Step: 1:  93%|█████████▎| 56/60 [00:01<00:00, 39.56it/s][A
+Mapping Time Step: 1: 100%|██████████| 60/60 [00:01<00:00, 39.66it/s][AMapping Time Step: 1: 100%|██████████| 60/60 [00:01<00:00, 38.91it/s]
+  0%|          | 2/2000 [00:04<1:19:31,  2.39s/it]
+Tracking Time Step: 2:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 2:  12%|█▎        | 5/40 [00:00<00:00, 40.98it/s][A
+Tracking Time Step: 2:  25%|██▌       | 10/40 [00:00<00:00, 41.30it/s][A
+Tracking Time Step: 2:  38%|███▊      | 15/40 [00:00<00:00, 41.41it/s][A
+Tracking Time Step: 2:  50%|█████     | 20/40 [00:00<00:00, 41.53it/s][A
+Tracking Time Step: 2:  62%|██████▎   | 25/40 [00:00<00:00, 41.59it/s][A
+Tracking Time Step: 2:  75%|███████▌  | 30/40 [00:00<00:00, 41.60it/s][A
+Tracking Time Step: 2:  88%|████████▊ | 35/40 [00:00<00:00, 41.62it/s][A
+Tracking Time Step: 2: 100%|██████████| 40/40 [00:00<00:00, 41.63it/s][ATracking Time Step: 2: 100%|██████████| 40/40 [00:00<00:00, 41.53it/s]
+
+Selected Keyframes at Frame 2: [0, 2]
+
+Mapping Time Step: 2:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 2:   7%|▋         | 4/60 [00:00<00:01, 39.97it/s][A
+Mapping Time Step: 2:  13%|█▎        | 8/60 [00:00<00:01, 39.81it/s][A
+Mapping Time Step: 2:  20%|██        | 12/60 [00:00<00:01, 39.82it/s][A
+Mapping Time Step: 2:  27%|██▋       | 16/60 [00:00<00:01, 39.86it/s][A
+Mapping Time Step: 2:  33%|███▎      | 20/60 [00:00<00:01, 39.88it/s][A
+Mapping Time Step: 2:  40%|████      | 24/60 [00:00<00:00, 38.54it/s][A
+Mapping Time Step: 2:  48%|████▊     | 29/60 [00:00<00:00, 39.10it/s][A
+Mapping Time Step: 2:  57%|█████▋    | 34/60 [00:00<00:00, 39.43it/s][A
+Mapping Time Step: 2:  65%|██████▌   | 39/60 [00:00<00:00, 39.66it/s][A
+Mapping Time Step: 2:  73%|███████▎  | 44/60 [00:01<00:00, 39.86it/s][A
+Mapping Time Step: 2:  82%|████████▏ | 49/60 [00:01<00:00, 40.01it/s][A
+Mapping Time Step: 2:  90%|█████████ | 54/60 [00:01<00:00, 40.11it/s][A
+Mapping Time Step: 2:  98%|█████████▊| 59/60 [00:01<00:00, 40.21it/s][AMapping Time Step: 2: 100%|██████████| 60/60 [00:01<00:00, 39.82it/s]
+  0%|          | 3/2000 [00:07<1:21:48,  2.46s/it]
+Tracking Time Step: 3:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 3:  12%|█▎        | 5/40 [00:00<00:00, 41.42it/s][A
+Tracking Time Step: 3:  25%|██▌       | 10/40 [00:00<00:00, 41.91it/s][A
+Tracking Time Step: 3:  38%|███▊      | 15/40 [00:00<00:00, 42.03it/s][A
+Tracking Time Step: 3:  50%|█████     | 20/40 [00:00<00:00, 42.12it/s][A
+Tracking Time Step: 3:  62%|██████▎   | 25/40 [00:00<00:00, 42.15it/s][A
+Tracking Time Step: 3:  75%|███████▌  | 30/40 [00:00<00:00, 42.17it/s][A
+Tracking Time Step: 3:  88%|████████▊ | 35/40 [00:00<00:00, 42.23it/s][A
+Tracking Time Step: 3: 100%|██████████| 40/40 [00:00<00:00, 42.18it/s][ATracking Time Step: 3: 100%|██████████| 40/40 [00:00<00:00, 42.10it/s]
+
+Selected Keyframes at Frame 3: [0, 3]
+
+Mapping Time Step: 3:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 3:   8%|▊         | 5/60 [00:00<00:01, 40.35it/s][A
+Mapping Time Step: 3:  17%|█▋        | 10/60 [00:00<00:01, 40.42it/s][A
+Mapping Time Step: 3:  25%|██▌       | 15/60 [00:00<00:01, 40.46it/s][A
+Mapping Time Step: 3:  33%|███▎      | 20/60 [00:00<00:00, 40.51it/s][A
+Mapping Time Step: 3:  42%|████▏     | 25/60 [00:00<00:00, 39.37it/s][A
+Mapping Time Step: 3:  50%|█████     | 30/60 [00:00<00:00, 39.84it/s][A
+Mapping Time Step: 3:  58%|█████▊    | 35/60 [00:00<00:00, 40.14it/s][A
+Mapping Time Step: 3:  67%|██████▋   | 40/60 [00:00<00:00, 40.37it/s][A
+Mapping Time Step: 3:  75%|███████▌  | 45/60 [00:01<00:00, 40.56it/s][A
+Mapping Time Step: 3:  83%|████████▎ | 50/60 [00:01<00:00, 40.68it/s][A
+Mapping Time Step: 3:  92%|█████████▏| 55/60 [00:01<00:00, 40.78it/s][A
+Mapping Time Step: 3: 100%|██████████| 60/60 [00:01<00:00, 40.85it/s][AMapping Time Step: 3: 100%|██████████| 60/60 [00:01<00:00, 40.45it/s]
+  0%|          | 4/2000 [00:09<1:22:21,  2.48s/it]
+Tracking Time Step: 4:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 4:  12%|█▎        | 5/40 [00:00<00:00, 42.02it/s][A
+Tracking Time Step: 4:  25%|██▌       | 10/40 [00:00<00:00, 42.44it/s][A
+Tracking Time Step: 4:  38%|███▊      | 15/40 [00:00<00:00, 42.57it/s][A
+Tracking Time Step: 4:  50%|█████     | 20/40 [00:00<00:00, 42.67it/s][A
+Tracking Time Step: 4:  62%|██████▎   | 25/40 [00:00<00:00, 42.74it/s][A
+Tracking Time Step: 4:  75%|███████▌  | 30/40 [00:00<00:00, 42.74it/s][A
+Tracking Time Step: 4:  88%|████████▊ | 35/40 [00:00<00:00, 42.78it/s][A
+Tracking Time Step: 4: 100%|██████████| 40/40 [00:00<00:00, 42.70it/s][ATracking Time Step: 4: 100%|██████████| 40/40 [00:00<00:00, 42.65it/s]
+
+Selected Keyframes at Frame 4: [0, 4]
+
+Mapping Time Step: 4:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 4:   8%|▊         | 5/60 [00:00<00:01, 40.75it/s][A
+Mapping Time Step: 4:  17%|█▋        | 10/60 [00:00<00:01, 40.91it/s][A
+Mapping Time Step: 4:  25%|██▌       | 15/60 [00:00<00:01, 41.01it/s][A
+Mapping Time Step: 4:  33%|███▎      | 20/60 [00:00<00:00, 41.08it/s][A
+Mapping Time Step: 4:  42%|████▏     | 25/60 [00:00<00:00, 39.80it/s][A
+Mapping Time Step: 4:  50%|█████     | 30/60 [00:00<00:00, 40.30it/s][A
+Mapping Time Step: 4:  58%|█████▊    | 35/60 [00:00<00:00, 40.59it/s][A
+Mapping Time Step: 4:  67%|██████▋   | 40/60 [00:00<00:00, 40.84it/s][A
+Mapping Time Step: 4:  75%|███████▌  | 45/60 [00:01<00:00, 41.00it/s][A
+Mapping Time Step: 4:  83%|████████▎ | 50/60 [00:01<00:00, 41.13it/s][A
+Mapping Time Step: 4:  92%|█████████▏| 55/60 [00:01<00:00, 41.23it/s][A
+Mapping Time Step: 4: 100%|██████████| 60/60 [00:01<00:00, 41.30it/s][AMapping Time Step: 4: 100%|██████████| 60/60 [00:01<00:00, 40.92it/s]
+  0%|          | 5/2000 [00:12<1:22:22,  2.48s/it]
+Tracking Time Step: 5:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 5:  12%|█▎        | 5/40 [00:00<00:00, 42.22it/s][A
+Tracking Time Step: 5:  25%|██▌       | 10/40 [00:00<00:00, 42.67it/s][A
+Tracking Time Step: 5:  38%|███▊      | 15/40 [00:00<00:00, 42.85it/s][A
+Tracking Time Step: 5:  50%|█████     | 20/40 [00:00<00:00, 42.96it/s][A
+Tracking Time Step: 5:  62%|██████▎   | 25/40 [00:00<00:00, 42.99it/s][A
+Tracking Time Step: 5:  75%|███████▌  | 30/40 [00:00<00:00, 43.05it/s][A
+Tracking Time Step: 5:  88%|████████▊ | 35/40 [00:00<00:00, 43.07it/s][A
+Tracking Time Step: 5: 100%|██████████| 40/40 [00:00<00:00, 43.07it/s][ATracking Time Step: 5: 100%|██████████| 40/40 [00:00<00:00, 42.96it/s]
+
+Selected Keyframes at Frame 5: [0, 4, 5]
+
+Mapping Time Step: 5:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 5:   8%|▊         | 5/60 [00:00<00:01, 41.01it/s][A
+Mapping Time Step: 5:  17%|█▋        | 10/60 [00:00<00:01, 41.21it/s][A
+Mapping Time Step: 5:  25%|██▌       | 15/60 [00:00<00:01, 41.27it/s][A
+Mapping Time Step: 5:  33%|███▎      | 20/60 [00:00<00:00, 41.30it/s][A
+Mapping Time Step: 5:  42%|████▏     | 25/60 [00:00<00:00, 40.03it/s][A
+Mapping Time Step: 5:  50%|█████     | 30/60 [00:00<00:00, 40.44it/s][A
+Mapping Time Step: 5:  58%|█████▊    | 35/60 [00:00<00:00, 40.77it/s][A
+Mapping Time Step: 5:  67%|██████▋   | 40/60 [00:00<00:00, 41.00it/s][A
+Mapping Time Step: 5:  75%|███████▌  | 45/60 [00:01<00:00, 41.18it/s][A
+Mapping Time Step: 5:  83%|████████▎ | 50/60 [00:01<00:00, 41.32it/s][A
+Mapping Time Step: 5:  92%|█████████▏| 55/60 [00:01<00:00, 41.39it/s][A
+Mapping Time Step: 5: 100%|██████████| 60/60 [00:01<00:00, 41.45it/s][AMapping Time Step: 5: 100%|██████████| 60/60 [00:01<00:00, 41.10it/s]
+  0%|          | 6/2000 [00:14<1:22:12,  2.47s/it]
+Tracking Time Step: 6:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 6:  12%|█▎        | 5/40 [00:00<00:00, 42.30it/s][A
+Tracking Time Step: 6:  25%|██▌       | 10/40 [00:00<00:00, 42.78it/s][A
+Tracking Time Step: 6:  38%|███▊      | 15/40 [00:00<00:00, 42.96it/s][A
+Tracking Time Step: 6:  50%|█████     | 20/40 [00:00<00:00, 43.05it/s][A
+Tracking Time Step: 6:  62%|██████▎   | 25/40 [00:00<00:00, 43.05it/s][A
+Tracking Time Step: 6:  75%|███████▌  | 30/40 [00:00<00:00, 43.10it/s][A
+Tracking Time Step: 6:  88%|████████▊ | 35/40 [00:00<00:00, 43.10it/s][A
+Tracking Time Step: 6: 100%|██████████| 40/40 [00:00<00:00, 43.12it/s][ATracking Time Step: 6: 100%|██████████| 40/40 [00:00<00:00, 43.02it/s]
+
+Selected Keyframes at Frame 6: [0, 4, 6]
+
+Mapping Time Step: 6:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 6:   8%|▊         | 5/60 [00:00<00:01, 41.09it/s][A
+Mapping Time Step: 6:  17%|█▋        | 10/60 [00:00<00:01, 41.30it/s][A
+Mapping Time Step: 6:  25%|██▌       | 15/60 [00:00<00:01, 41.40it/s][A
+Mapping Time Step: 6:  33%|███▎      | 20/60 [00:00<00:00, 41.46it/s][A
+Mapping Time Step: 6:  42%|████▏     | 25/60 [00:00<00:00, 40.21it/s][A
+Mapping Time Step: 6:  50%|█████     | 30/60 [00:00<00:00, 40.71it/s][A
+Mapping Time Step: 6:  58%|█████▊    | 35/60 [00:00<00:00, 41.08it/s][A
+Mapping Time Step: 6:  67%|██████▋   | 40/60 [00:00<00:00, 41.29it/s][A
+Mapping Time Step: 6:  75%|███████▌  | 45/60 [00:01<00:00, 41.40it/s][A
+Mapping Time Step: 6:  83%|████████▎ | 50/60 [00:01<00:00, 41.51it/s][A
+Mapping Time Step: 6:  92%|█████████▏| 55/60 [00:01<00:00, 41.59it/s][A
+Mapping Time Step: 6: 100%|██████████| 60/60 [00:01<00:00, 41.67it/s][AMapping Time Step: 6: 100%|██████████| 60/60 [00:01<00:00, 41.31it/s]
+  0%|          | 7/2000 [00:17<1:21:58,  2.47s/it]
+Tracking Time Step: 7:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 7:  12%|█▎        | 5/40 [00:00<00:00, 42.44it/s][A
+Tracking Time Step: 7:  25%|██▌       | 10/40 [00:00<00:00, 42.94it/s][A
+Tracking Time Step: 7:  38%|███▊      | 15/40 [00:00<00:00, 43.07it/s][A
+Tracking Time Step: 7:  50%|█████     | 20/40 [00:00<00:00, 43.19it/s][A
+Tracking Time Step: 7:  62%|██████▎   | 25/40 [00:00<00:00, 43.22it/s][A
+Tracking Time Step: 7:  75%|███████▌  | 30/40 [00:00<00:00, 43.24it/s][A
+Tracking Time Step: 7:  88%|████████▊ | 35/40 [00:00<00:00, 43.26it/s][A
+Tracking Time Step: 7: 100%|██████████| 40/40 [00:00<00:00, 43.29it/s][ATracking Time Step: 7: 100%|██████████| 40/40 [00:00<00:00, 43.18it/s]
+
+Selected Keyframes at Frame 7: [0, 4, 7]
+
+Mapping Time Step: 7:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 7:   8%|▊         | 5/60 [00:00<00:01, 41.03it/s][A
+Mapping Time Step: 7:  17%|█▋        | 10/60 [00:00<00:01, 41.25it/s][A
+Mapping Time Step: 7:  25%|██▌       | 15/60 [00:00<00:01, 41.31it/s][A
+Mapping Time Step: 7:  33%|███▎      | 20/60 [00:00<00:00, 41.37it/s][A
+Mapping Time Step: 7:  42%|████▏     | 25/60 [00:00<00:00, 40.14it/s][A
+Mapping Time Step: 7:  50%|█████     | 30/60 [00:00<00:00, 40.63it/s][A
+Mapping Time Step: 7:  58%|█████▊    | 35/60 [00:00<00:00, 40.94it/s][A
+Mapping Time Step: 7:  67%|██████▋   | 40/60 [00:00<00:00, 41.13it/s][A
+Mapping Time Step: 7:  75%|███████▌  | 45/60 [00:01<00:00, 41.24it/s][A
+Mapping Time Step: 7:  83%|████████▎ | 50/60 [00:01<00:00, 41.33it/s][A
+Mapping Time Step: 7:  92%|█████████▏| 55/60 [00:01<00:00, 41.29it/s][A
+Mapping Time Step: 7: 100%|██████████| 60/60 [00:01<00:00, 41.38it/s][AMapping Time Step: 7: 100%|██████████| 60/60 [00:01<00:00, 41.13it/s]
+  0%|          | 8/2000 [00:19<1:21:49,  2.46s/it]
+Tracking Time Step: 8:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 8:  12%|█▎        | 5/40 [00:00<00:00, 42.60it/s][A
+Tracking Time Step: 8:  25%|██▌       | 10/40 [00:00<00:00, 42.92it/s][A
+Tracking Time Step: 8:  38%|███▊      | 15/40 [00:00<00:00, 43.06it/s][A
+Tracking Time Step: 8:  50%|█████     | 20/40 [00:00<00:00, 43.13it/s][A
+Tracking Time Step: 8:  62%|██████▎   | 25/40 [00:00<00:00, 43.18it/s][A
+Tracking Time Step: 8:  75%|███████▌  | 30/40 [00:00<00:00, 43.19it/s][A
+Tracking Time Step: 8:  88%|████████▊ | 35/40 [00:00<00:00, 43.21it/s][A
+Tracking Time Step: 8: 100%|██████████| 40/40 [00:00<00:00, 43.22it/s][ATracking Time Step: 8: 100%|██████████| 40/40 [00:00<00:00, 43.13it/s]
+
+Selected Keyframes at Frame 8: [0, 4, 8]
+
+Mapping Time Step: 8:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 8:   8%|▊         | 5/60 [00:00<00:01, 40.71it/s][A
+Mapping Time Step: 8:  17%|█▋        | 10/60 [00:00<00:01, 41.26it/s][A
+Mapping Time Step: 8:  25%|██▌       | 15/60 [00:00<00:01, 41.42it/s][A
+Mapping Time Step: 8:  33%|███▎      | 20/60 [00:00<00:00, 41.52it/s][A
+Mapping Time Step: 8:  42%|████▏     | 25/60 [00:00<00:00, 39.98it/s][A
+Mapping Time Step: 8:  50%|█████     | 30/60 [00:00<00:00, 40.43it/s][A
+Mapping Time Step: 8:  58%|█████▊    | 35/60 [00:00<00:00, 40.74it/s][A
+Mapping Time Step: 8:  67%|██████▋   | 40/60 [00:00<00:00, 40.92it/s][A
+Mapping Time Step: 8:  75%|███████▌  | 45/60 [00:01<00:00, 41.03it/s][A
+Mapping Time Step: 8:  83%|████████▎ | 50/60 [00:01<00:00, 41.14it/s][A
+Mapping Time Step: 8:  92%|█████████▏| 55/60 [00:01<00:00, 41.20it/s][A
+Mapping Time Step: 8: 100%|██████████| 60/60 [00:01<00:00, 41.20it/s][AMapping Time Step: 8: 100%|██████████| 60/60 [00:01<00:00, 40.99it/s]
+  0%|          | 9/2000 [00:22<1:21:48,  2.47s/it]
+Tracking Time Step: 9:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 9:  12%|█▎        | 5/40 [00:00<00:00, 42.46it/s][A
+Tracking Time Step: 9:  25%|██▌       | 10/40 [00:00<00:00, 42.65it/s][A
+Tracking Time Step: 9:  38%|███▊      | 15/40 [00:00<00:00, 42.78it/s][A
+Tracking Time Step: 9:  50%|█████     | 20/40 [00:00<00:00, 42.83it/s][A
+Tracking Time Step: 9:  62%|██████▎   | 25/40 [00:00<00:00, 42.88it/s][A
+Tracking Time Step: 9:  75%|███████▌  | 30/40 [00:00<00:00, 42.92it/s][A
+Tracking Time Step: 9:  88%|████████▊ | 35/40 [00:00<00:00, 42.94it/s][A
+Tracking Time Step: 9: 100%|██████████| 40/40 [00:00<00:00, 42.97it/s][ATracking Time Step: 9: 100%|██████████| 40/40 [00:00<00:00, 42.87it/s]
+
+Selected Keyframes at Frame 9: [0, 4, 9]
+
+Mapping Time Step: 9:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 9:   8%|▊         | 5/60 [00:00<00:01, 41.01it/s][A
+Mapping Time Step: 9:  17%|█▋        | 10/60 [00:00<00:01, 41.15it/s][A
+Mapping Time Step: 9:  25%|██▌       | 15/60 [00:00<00:01, 41.21it/s][A
+Mapping Time Step: 9:  33%|███▎      | 20/60 [00:00<00:00, 41.26it/s][A
+Mapping Time Step: 9:  42%|████▏     | 25/60 [00:00<00:00, 39.75it/s][A
+Mapping Time Step: 9:  50%|█████     | 30/60 [00:00<00:00, 40.26it/s][A
+Mapping Time Step: 9:  58%|█████▊    | 35/60 [00:00<00:00, 40.59it/s][A
+Mapping Time Step: 9:  67%|██████▋   | 40/60 [00:00<00:00, 40.78it/s][A
+Mapping Time Step: 9:  75%|███████▌  | 45/60 [00:01<00:00, 40.94it/s][A
+Mapping Time Step: 9:  83%|████████▎ | 50/60 [00:01<00:00, 41.02it/s][A
+Mapping Time Step: 9:  92%|█████████▏| 55/60 [00:01<00:00, 41.08it/s][A
+Mapping Time Step: 9: 100%|██████████| 60/60 [00:01<00:00, 41.15it/s][AMapping Time Step: 9: 100%|██████████| 60/60 [00:01<00:00, 40.88it/s]
+  0%|          | 10/2000 [00:24<1:21:49,  2.47s/it]
+Tracking Time Step: 10:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 10:  12%|█▎        | 5/40 [00:00<00:00, 42.39it/s][A
+Tracking Time Step: 10:  25%|██▌       | 10/40 [00:00<00:00, 42.70it/s][A
+Tracking Time Step: 10:  38%|███▊      | 15/40 [00:00<00:00, 42.78it/s][A
+Tracking Time Step: 10:  50%|█████     | 20/40 [00:00<00:00, 42.84it/s][A
+Tracking Time Step: 10:  62%|██████▎   | 25/40 [00:00<00:00, 42.86it/s][A
+Tracking Time Step: 10:  75%|███████▌  | 30/40 [00:00<00:00, 42.90it/s][A
+Tracking Time Step: 10:  88%|████████▊ | 35/40 [00:00<00:00, 42.92it/s][A
+Tracking Time Step: 10: 100%|██████████| 40/40 [00:00<00:00, 42.95it/s][ATracking Time Step: 10: 100%|██████████| 40/40 [00:00<00:00, 42.86it/s]
+slam_full_pose_np: [-0.106 -0.054  0.062  1.001 -0.003 -0.008 -0.004] \corrected_pose_np: [-0.107 -0.058  0.07   1.002 -0.009 -0.005 -0.002]
+
+Selected Keyframes at Frame 10: [0, 4, 9, 10]
+
+Mapping Time Step: 10:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 10:   5%|▌         | 3/60 [00:00<00:02, 27.46it/s][A
+Mapping Time Step: 10:  13%|█▎        | 8/60 [00:00<00:01, 35.63it/s][A
+Mapping Time Step: 10:  22%|██▏       | 13/60 [00:00<00:01, 38.19it/s][A
+Mapping Time Step: 10:  30%|███       | 18/60 [00:00<00:01, 39.30it/s][A
+Mapping Time Step: 10:  37%|███▋      | 22/60 [00:00<00:00, 38.45it/s][A
+Mapping Time Step: 10:  45%|████▌     | 27/60 [00:00<00:00, 39.47it/s][A
+Mapping Time Step: 10:  53%|█████▎    | 32/60 [00:00<00:00, 40.08it/s][A
+Mapping Time Step: 10:  62%|██████▏   | 37/60 [00:00<00:00, 40.50it/s][A
+Mapping Time Step: 10:  70%|███████   | 42/60 [00:01<00:00, 40.73it/s][A
+Mapping Time Step: 10:  78%|███████▊  | 47/60 [00:01<00:00, 40.87it/s][A
+Mapping Time Step: 10:  87%|████████▋ | 52/60 [00:01<00:00, 41.01it/s][A
+Mapping Time Step: 10:  95%|█████████▌| 57/60 [00:01<00:00, 41.08it/s][AMapping Time Step: 10: 100%|██████████| 60/60 [00:01<00:00, 39.87it/s]
+  1%|          | 11/2000 [00:27<1:25:11,  2.57s/it]
+Tracking Time Step: 11:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 11:  12%|█▎        | 5/40 [00:00<00:00, 41.88it/s][A
+Tracking Time Step: 11:  25%|██▌       | 10/40 [00:00<00:00, 42.33it/s][A
+Tracking Time Step: 11:  38%|███▊      | 15/40 [00:00<00:00, 42.42it/s][A
+Tracking Time Step: 11:  50%|█████     | 20/40 [00:00<00:00, 42.54it/s][A
+Tracking Time Step: 11:  62%|██████▎   | 25/40 [00:00<00:00, 42.57it/s][A
+Tracking Time Step: 11:  75%|███████▌  | 30/40 [00:00<00:00, 42.61it/s][A
+Tracking Time Step: 11:  88%|████████▊ | 35/40 [00:00<00:00, 42.64it/s][A
+Tracking Time Step: 11: 100%|██████████| 40/40 [00:00<00:00, 42.65it/s][ATracking Time Step: 11: 100%|██████████| 40/40 [00:00<00:00, 42.54it/s]
+slam_full_pose_np: [-0.118 -0.077  0.066  1.008 -0.009 -0.006 -0.005] \corrected_pose_np: [-0.118 -0.081  0.074  1.01  -0.015 -0.002 -0.003]
+
+Selected Keyframes at Frame 11: [0, 4, 9, 11]
+
+Mapping Time Step: 11:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 11:   5%|▌         | 3/60 [00:00<00:02, 25.26it/s][A
+Mapping Time Step: 11:  13%|█▎        | 8/60 [00:00<00:01, 34.39it/s][A
+Mapping Time Step: 11:  22%|██▏       | 13/60 [00:00<00:01, 37.32it/s][A
+Mapping Time Step: 11:  30%|███       | 18/60 [00:00<00:01, 38.70it/s][A
+Mapping Time Step: 11:  37%|███▋      | 22/60 [00:00<00:01, 37.80it/s][A
+Mapping Time Step: 11:  45%|████▌     | 27/60 [00:00<00:00, 38.91it/s][A
+Mapping Time Step: 11:  53%|█████▎    | 32/60 [00:00<00:00, 39.63it/s][A
+Mapping Time Step: 11:  62%|██████▏   | 37/60 [00:00<00:00, 40.11it/s][A
+Mapping Time Step: 11:  70%|███████   | 42/60 [00:01<00:00, 40.38it/s][A
+Mapping Time Step: 11:  78%|███████▊  | 47/60 [00:01<00:00, 40.56it/s][A
+Mapping Time Step: 11:  87%|████████▋ | 52/60 [00:01<00:00, 40.68it/s][A
+Mapping Time Step: 11:  95%|█████████▌| 57/60 [00:01<00:00, 40.75it/s][AMapping Time Step: 11: 100%|██████████| 60/60 [00:01<00:00, 39.34it/s]
+  1%|          | 12/2000 [00:29<1:25:36,  2.58s/it]
+Tracking Time Step: 12:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 12:  12%|█▎        | 5/40 [00:00<00:00, 41.54it/s][A
+Tracking Time Step: 12:  25%|██▌       | 10/40 [00:00<00:00, 42.02it/s][A
+Tracking Time Step: 12:  38%|███▊      | 15/40 [00:00<00:00, 42.14it/s][A
+Tracking Time Step: 12:  50%|█████     | 20/40 [00:00<00:00, 42.20it/s][A
+Tracking Time Step: 12:  62%|██████▎   | 25/40 [00:00<00:00, 42.22it/s][A
+Tracking Time Step: 12:  75%|███████▌  | 30/40 [00:00<00:00, 42.24it/s][A
+Tracking Time Step: 12:  88%|████████▊ | 35/40 [00:00<00:00, 42.24it/s][A
+Tracking Time Step: 12: 100%|██████████| 40/40 [00:00<00:00, 42.26it/s][ATracking Time Step: 12: 100%|██████████| 40/40 [00:00<00:00, 42.18it/s]
+slam_full_pose_np: [-0.124 -0.07   0.074  1.011 -0.01  -0.005 -0.003] \corrected_pose_np: [-0.124 -0.074  0.081  1.012 -0.016 -0.001 -0.001]
+
+Selected Keyframes at Frame 12: [4, 0, 9, 12]
+
+Mapping Time Step: 12:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 12:   5%|▌         | 3/60 [00:00<00:02, 26.05it/s][A
+Mapping Time Step: 12:  13%|█▎        | 8/60 [00:00<00:01, 34.85it/s][A
+Mapping Time Step: 12:  22%|██▏       | 13/60 [00:00<00:01, 37.55it/s][A
+Mapping Time Step: 12:  30%|███       | 18/60 [00:00<00:01, 38.80it/s][A
+Mapping Time Step: 12:  37%|███▋      | 22/60 [00:00<00:01, 37.88it/s][A
+Mapping Time Step: 12:  45%|████▌     | 27/60 [00:00<00:00, 38.90it/s][A
+Mapping Time Step: 12:  53%|█████▎    | 32/60 [00:00<00:00, 39.53it/s][A
+Mapping Time Step: 12:  62%|██████▏   | 37/60 [00:00<00:00, 39.94it/s][A
+Mapping Time Step: 12:  70%|███████   | 42/60 [00:01<00:00, 40.20it/s][A
+Mapping Time Step: 12:  78%|███████▊  | 47/60 [00:01<00:00, 40.38it/s][A
+Mapping Time Step: 12:  87%|████████▋ | 52/60 [00:01<00:00, 40.48it/s][A
+Mapping Time Step: 12:  95%|█████████▌| 57/60 [00:01<00:00, 40.57it/s][AMapping Time Step: 12: 100%|██████████| 60/60 [00:01<00:00, 39.29it/s]
+  1%|          | 13/2000 [00:32<1:25:54,  2.59s/it]
+Tracking Time Step: 13:   0%|          | 0/40 [00:00<?, ?it/s][A
+Tracking Time Step: 13:  12%|█▎        | 5/40 [00:00<00:00, 41.13it/s][A
+Tracking Time Step: 13:  25%|██▌       | 10/40 [00:00<00:00, 41.54it/s][A
+Tracking Time Step: 13:  38%|███▊      | 15/40 [00:00<00:00, 41.77it/s][A
+Tracking Time Step: 13:  50%|█████     | 20/40 [00:00<00:00, 41.87it/s][A
+Tracking Time Step: 13:  62%|██████▎   | 25/40 [00:00<00:00, 41.93it/s][A
+Tracking Time Step: 13:  75%|███████▌  | 30/40 [00:00<00:00, 41.99it/s][A
+Tracking Time Step: 13:  88%|████████▊ | 35/40 [00:00<00:00, 42.03it/s][A
+Tracking Time Step: 13: 100%|██████████| 40/40 [00:00<00:00, 42.05it/s][ATracking Time Step: 13: 100%|██████████| 40/40 [00:00<00:00, 41.91it/s]
+slam_full_pose_np: [-0.127 -0.078  0.077  1.003 -0.014 -0.003 -0.001] \corrected_pose_np: [-0.127 -0.081  0.084  1.005 -0.019  0.     0.001]
+
+Selected Keyframes at Frame 13: [0, 4, 9, 13]
+
+Mapping Time Step: 13:   0%|          | 0/60 [00:00<?, ?it/s][A
+Mapping Time Step: 13:   5%|▌         | 3/60 [00:00<00:02, 25.22it/s][A
+Mapping Time Step: 13:  13%|█▎        | 8/60 [00:00<00:01, 34.22it/s][A
+Mapping Time Step: 13:  22%|██▏       | 13/60 [00:00<00:01, 37.12it/s][A
+Mapping Time Step: 13:  30%|███       | 18/60 [00:00<00:01, 38.47it/s][A
+Mapping Time Step: 13:  37%|███▋      | 22/60 [00:00<00:01, 37.51it/s][A
+Mapping Time Step: 13:  45%|████▌     | 27/60 [00:00<00:00, 38.62it/s][A
+Mapping Time Step: 13:  53%|█████▎    | 32/60 [00:00<00:00, 39.29it/s][A
+Mapping Time Step: 13:  62%|██████▏   | 37/60 [00:00<00:00, 39.71it/s][A
+Mapping Time Step: 13:  70%|███████   | 42/60 [00:01<00:00, 39.98it/s][A
+Mapping Time Step: 13:  78%|███████▊  | 47/60 [00:01<00:00, 40.16it/s][A

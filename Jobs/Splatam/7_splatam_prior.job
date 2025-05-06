@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --time=4:30:00
-#SBATCH --output=7_PriorSplaTAM%A.out
+#SBATCH --output=7_PriorSplaTAM_Fixed%A.out
 
 
 source activate splatam
