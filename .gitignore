@@ -40,7 +40,10 @@ NewerCollege/
 
 SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth.git
 
-KITTI_odometry
+KITTI_odometry/*
+!KITTI_odometry/dataset/
+KITTI_odometry/dataset/*
+!KITTI_odometry/dataset/depth_sorting.sh
 _Archive/
 _Archive/Kitti_2D_LED_20epochs
 XTrainLEDKitti.py
