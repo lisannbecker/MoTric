@@ -23,6 +23,7 @@ from PoseLoaderCustom import LoadDatasetLeapfrog, seq_collate_custom
 
 
 #from trainer.kde_utils import find_max
+torch.set_printoptions(precision=6, sci_mode=False)
 
 
 from models.model_led_initializer import LEDInitializer as InitializationModel
@@ -1095,17 +1096,19 @@ class Trainer:
 			# 	precision=4,   # number of digits after the decimal
 			# 	sci_mode=False # turn off scientific (e+) notation
 			# )
-			# print(f"first traj all poses (pre): ", data['pre_motion_3D'][0,0,:,:]) #first traj all poses (pre) (B, A, T, D)
+			# print(f"first traj all poses (pre): ", data['pre_motion_3D'].shape, data['pre_motion_3D'][0,0,:,:]) #first traj all poses (pre) (B, A, T, D)
 			# print(f"first traj all poses (fut): ", data['fut_motion_3D'][0,0,:,:]) #first traj all poses (fut)
-			# exit()
+
 			batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data) # past_traj =(past_traj_abs, past_traj_rel, past_traj_vel)
+
 			# if i in [0,1]:
 			# 	print("past_traj[0,0,:] on bad batch:", past_traj[0,0,:].detach().cpu())
 			#print('fut_traj:', fut_traj[0,0,:]) #first fut timestep
 
 
 			# print('traj_mask:', traj_mask.size()) # [32, 32]
-			# print('past_traj processed:', past_traj[0]) # [32, T, D+3] 
+
+			print('past_traj processed:', past_traj.shape, past_traj[0,:,:3]) # [32, T, D+3]  # XXX SHOULD BE THE SAME FORMAT
 			# print('fut_traj processed:', fut_traj[0]) # [32, T, D+3] < GT poses for future_frames timesteps
 			# exit()
 			
@@ -1153,7 +1156,8 @@ class Trainer:
 
 			### 2. Denoising (Denoising Module): Generate K alternative future trajectories - multi-modal
 			k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, loc) #(B, K, T, 2/3/6/7/9)
-			# print('k_alternative_preds:',k_alternative_preds[0,0,0,:])
+			print('k_alternative_preds first T:',k_alternative_preds[0,:,0,:3])
+			exit()
 
 			
 			# print('k_alternative_preds:', k_alternative_preds[0,:,0,:2]) #check if prediction is 9D
@@ -1610,10 +1614,10 @@ class Trainer:
 		#Synthetic
 		# checkpoint_path = './results/6_3_Synthetic_Right_Curve_Random_Independent/6_3_9D_Synthetic_Right_Curve_Random_Independent/models/best_checkpoint_epoch_39.pth'
 		#checkpoint_path = './results/6_3_Synthetic_Right_Curve_Random_Walk/6_3_9D_Synthetic_Right_Curve_Random_Walk/models/best_checkpoint_epoch_25.pth'
-		#checkpoint_path = './results/6_3_Synthetic_Right_Curve_Right_Bias/6_3_9D_Synthetic_Right_Curve_Right_Bias/models/best_checkpoint_epoch_38.pth'
+		checkpoint_path = './results/6_3_Synthetic_Right_Curve_Right_Bias/6_3_9D_Synthetic_Right_Curve_Right_Bias/models/best_checkpoint_epoch_38.pth'
 		# checkpoint_path = './results/6_3_Synthetic_Straight_Random_Independent/6_3_9D_Synthetic_Straight_Random_Independent/models/best_checkpoint_epoch_23.pth'
 		# checkpoint_path = './results/6_3_Synthetic_Straight_Random_Walk/6_3_9D_Synthetic_Straight_Random_Walk/models/best_checkpoint_epoch_14.pth'
-		checkpoint_path = './results/6_3_Synthetic_Straight_Right_Bias/6_3_9D_Synthetic_Straight_Right_Bias/models/best_checkpoint_epoch_29.pth'
+		# checkpoint_path = './results/6_3_Synthetic_Straight_Right_Bias/6_3_9D_Synthetic_Straight_Right_Bias/models/best_checkpoint_epoch_29.pth'
 
 		experiment_name = checkpoint_path.split('/')[3]
 
@@ -1664,10 +1668,11 @@ class Trainer:
 				# print(data['fut_motion_3D'][5,:,:])
 				# exit()
 				batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
-				# print(past_traj[0, :, :]) 
+
+				print('past poses relative translation:', past_traj.shape, past_traj[0,:,:3])
 				# print(past_traj.size())
 				# first position past traj - should be relativised to [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00,  0.0000e+00, 0.0000e+00,  1.0000e+00,  0.0000e+00,  0.0000e+00]
-				# exit()
+
 
 				# Generate initial predictions using the initializer model
 				sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
@@ -1678,7 +1683,8 @@ class Trainer:
 
 				# Generate the refined trajectory via the diffusion process
 				k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, initializer_preds)
-				
+				print('k_alternative_preds first T:',k_alternative_preds[0,:,0,:3])
+				exit()
 
 				# print(k_alternative_preds.size())  # (B, K, T, D)
 				# print(fut_traj.size()) # (B, T, D)
@@ -1722,8 +1728,8 @@ class Trainer:
 				# exit()
 				
 				# self.compute_kde_and_vis_full_traj(initializer_preds_xy, past_traj_xy, fut_traj_xy, True, False)
-				self.compute_kde_and_vis_full_traj(k_alternative_preds_xy, past_traj_xy, fut_traj_xy, experiment_name, True, True)
-				exit()
+				# self.compute_kde_and_vis_full_traj(k_alternative_preds_xy, past_traj_xy, fut_traj_xy, experiment_name, True, True)
+				# exit()
 
 				
 				for traj_idx in range(batch_size):

@@ -10,8 +10,11 @@ future_frames                : 25
 min_past_frames              : 10
 min_future_frames            : 25
 
-k_preds                      : 50
+k_preds                      : 20
 
+
+synthetic_gt              : na #straight, right_curve
+synthetic_noise           : na #random_independent, random_walk, right_bias
 
 # motion_dim                   : 3 #not used in code...
 # forecast_dim                 : 3 #not used in code...

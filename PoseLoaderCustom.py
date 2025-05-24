@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
+from torch.utils.data import Dataset, DataLoader
 
 import os
 import sys
@@ -12,7 +12,6 @@ from scipy.spatial.transform import Rotation as R
 
 posenet_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "Continuous-Pose-in-NeRF"))
 sys.path.append(posenet_dir)
-from PoseNet import PoseNet
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -41,7 +40,7 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
         ### 0. Define dataset file paths
         if dataset == 'kitti':
             indices = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
-            file_names = [f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{idx}.txt' for idx in indices]
+            file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
         elif dataset == 'synthetic':
             dataset_path = '/home/scur2440/MoTric/synthetic_data'
             gt_type = synthetic_gt #straight, right_curve
@@ -91,12 +90,12 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
             if dataset == 'kitti':
                 if training == True:
                     indices = ['00', '01', '02', '04', '06', '07', '08']
-                    file_names = [f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{idx}.txt' for idx in indices]
+                    file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
                 elif final_eval == True:
-                    file_names = [f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/05.txt' ]
+                    file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/05.txt' ]
                 else: #validation
                     indices = ['03', '09', '10']
-                    file_names = [f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{idx}.txt' for idx in indices]
+                    file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
 
             elif dataset == 'newer':
                 if training == True:
@@ -144,9 +143,35 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
             trans_fut = p_targets[:, :, :2, 3] 
         ### 2.1. 3D/6D/7D/9D: Extract x, z, y translation
         elif dims == 7:
-            # For 7D TUM poses, use the complete pose (all 7 values) directly.
-            SE3_pre = p_inputs       # Expected shape: [num_windows, input_size, 7]
-            SE3_fut = p_targets      # Expected shape: [num_windows, output_size, 7] 
+
+            if p_inputs.ndim == 3 and p_inputs.shape[-1] == 7:
+                print('Is 7d already')
+                SE3_pre = p_inputs       # [N, past_frames, 7]
+                SE3_fut = p_targets      # [N, future_frames, 7]
+            else:
+                print('Assumes homogenous-matrix from')
+                R_pre = p_inputs[..., :3, :3]       # [N, W, 3,3]
+                t_pre = p_inputs[..., :3,  3]       # [N, W, 3]
+                R_fut = p_targets[..., :3, :3]
+                t_fut = p_targets[..., :3,  3]
+
+                # 1) bring your 3×3’s onto the CPU and flatten
+                R_pre_flat = R_pre.cpu().reshape(-1, 3, 3).numpy()
+                R_fut_flat = R_fut.cpu().reshape(-1, 3, 3).numpy()
+
+                # 2) use scipy to convert
+                quat_pre_flat = R.from_matrix(R_pre_flat).as_quat()  # shape: (N*W, 4), order [x, y, z, w]
+                quat_fut_flat = R.from_matrix(R_fut_flat).as_quat()
+
+                # 3) re-pack into torch tensors of shape [N, W, 4]
+                q_pre = torch.from_numpy(quat_pre_flat).view(*R_pre.shape[:-2], 4).to(R_pre.device)
+                q_fut = torch.from_numpy(quat_fut_flat).view(*R_fut.shape[:-2], 4).to(R_fut.device)
+
+                # 4) now concatenate to get your 7-vectors
+                SE3_pre = torch.cat([t_pre, q_pre], dim=-1)   # [N, W, 7]
+                SE3_fut = torch.cat([t_fut, q_fut], dim=-1)
+            
+
         else:
             trans_pre = p_inputs[:, :, :3, 3]  # [num_windows, input_size, 3] << 3D adjustment
             trans_fut = p_targets[:, :, :3, 3]  # [num_windows, output_size, 3] << 3D adjustment
@@ -251,6 +276,9 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
         # Subset data
         self.pre_motion_3D = all_pre[selected_indices]
         self.fut_motion_3D = all_fut[selected_indices]
+        self.pre_motion_3D = self.pre_motion_3D.float()
+        self.fut_motion_3D = self.fut_motion_3D.float()
+
         self.pre_motion_mask = all_pre_mask[selected_indices]
         self.fut_motion_mask = all_fut_mask[selected_indices]
         print('Len dataset:', len(self.pre_motion_3D))
@@ -273,7 +301,6 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
         return sample
 
 
-
 def seq_collate_custom(data): #allows to have None as pred_mask (as opposed to default collate)
     pre_motion_3D = torch.stack([d['pre_motion_3D'] for d in data], dim=0)
     fut_motion_3D = torch.stack([d['fut_motion_3D'] for d in data], dim=0)
@@ -290,6 +317,7 @@ def seq_collate_custom(data): #allows to have None as pred_mask (as opposed to d
         'pred_mask': None,
         'seq': 'kitti'
     }
+
 
 
 class Lie():
@@ -384,6 +412,7 @@ def quaternion_to_rotation_matrix(qx, qy, qz, qw):
         [2*(qx*qz - qy*qw),     2*(qy*qz + qx*qw),     1 - 2*(qx**2 + qy**2)]
     ])
     return R
+
 
 def TUM_to_homogenous_matrices(file_path):    
     tum_data = pd.read_csv(file_path, sep=" ", header=None, names=["timestamp", "x", "y", "z", "qx", "qy", "qz", "qw"])
@@ -812,9 +841,6 @@ def load_all_and_split(dataset, file_name_list, window_size, input_size, dims, u
     return combined_p_inputs, combined_p_targets, combined_t_inputs, combined_t_targets
 
 
-
-
-
 def print_some_stats(future, future_rot=None, translation_dims=3):
     future = future.squeeze(dim=1) #torch.Size([16106, 20, 3])
 
@@ -846,13 +872,13 @@ def print_some_stats(future, future_rot=None, translation_dims=3):
 
 if __name__ == "__main__":
 
-    dimensions = 9 # possible values: 2, 3, 6 (Lie), 7 (TUM), 9 (6d)
-    dataset = 'synthetic' # possible values: kitti (AD), newer (Pedestrian), spires (Pedestrian), synthetic (pedestrian)
+    dimensions = 7 # possible values: 2, 3, 6 (Lie), 7 (TUM), 9 (6d)
+    dataset = 'synthetic' # possible values: kitti (AD), newer (Pedestrian), spires (Pedestrian), synthetic (pedestrian), pedestrian_prior (newer and spires)
     print(f'{dimensions}D {dataset.upper()}\n')
 
     train_dataset = LoadDatasetLeapfrog(dataset=dataset, dims = dimensions, input_size=10, preds_size=22, training=True, final_eval=False, relative=False, normalised=False, overlapping=False, selected_trajectories=False) #which trajectories to load, window size, out of which past trajectories (rest is target trajectories), no normalisation [WIP]
     # print(train_dataset.pre_motion_3D[0,0,9,:])
-    
+
     
     if dimensions==9:
         print_some_stats(train_dataset.fut_motion_3D[..., :3], train_dataset.fut_motion_3D[..., 3:], 3)
@@ -886,37 +912,3 @@ if __name__ == "__main__":
         break
 
 
-
-
-
-
-#### dump
-
-def train_custom(p_wins, t_wins, N=3, batch_size = 32):
-    """
-    Window has 13 poses (right now) - first 10 poses would be used as input (mask) and last 3 should be predicted
-    """
-
-    print(p_wins.size())
-    for subtrajectory in p_wins:
-        input_poses = subtrajectory[:-N] #mask poses
-        gt_poses_for_loss = subtrajectory[-N:]
-        
-        print(subtrajectory.size())
-        print(input_poses.size())
-        print(gt_poses_for_loss.size())
-        
-        exit()
-    
-    
-    ### TODO switch to batch training
-    # dataset = TensorDataset(p_wins)  #TensorDataset(p_wins, t_wins)
-    # train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-    # #validation_dataloader = 
-    # #test_dataloader = 
-
-    # for batch_i, poses in enumerate(train_dataloader):
-    #     print(len(poses)) #list of tensors
-    #     print(poses)
-    #     exit()
