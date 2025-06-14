@@ -1,14 +1,14 @@
 # ------------------- General Options -------------------------
 description                  : LED
 results_root_dir             : results
-dataset                      : pedestrian_prior
+dataset                      : kitti
 dimensions                   : 7
 
 # ------------------- Dataset -------------------------
 past_frames                  : 10
-future_frames                : 22
+future_frames                : 10
 min_past_frames              : 10
-min_future_frames            : 22
+min_future_frames            : 10
 
 k_preds                      : 30
 
@@ -42,7 +42,7 @@ diffusion                    : {
 lr                           : 1.e-4 #tenth of previous
 train_batch_size             : 128
 test_batch_size              : 128 #slows testing down a bit compared to default 500
-num_epochs                   : 80
+num_epochs                   : 100
 test_interval                : 1  # Added: evaluate every N epochs
 lr_scheduler                 : 'step'
 decay_step                   : 8

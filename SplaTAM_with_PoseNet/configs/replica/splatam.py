@@ -45,7 +45,7 @@ config = dict(
         eval_save_qual=True,
     ),
     data=dict(
-        basedir="/scratch_net/schusch/qimaqi/MonoGS/datasets/replica",
+        basedir="./data/Replica",
         gradslam_data_cfg="./configs/data/replica.yaml",
         sequence=scene_name,
         desired_image_height=680,

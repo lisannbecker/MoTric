@@ -39,8 +39,9 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
 
         ### 0. Define dataset file paths
         if dataset == 'kitti':
-            indices = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment
-            file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
+            indices = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment '04', '03'
+            file_names = [f'/scratch-shared/scur_2440/kitti/poses/{idx}.txt' for idx in indices]
+            # file_names = [f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{idx}.txt' for idx in indices]
         elif dataset == 'synthetic':
             dataset_path = '/home/scur2440/MoTric/synthetic_data'
             gt_type = synthetic_gt #straight, right_curve

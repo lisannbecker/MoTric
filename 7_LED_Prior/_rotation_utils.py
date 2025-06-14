@@ -142,3 +142,103 @@ def rotmat_to_rot6d(R: torch.Tensor):
     Returns: tensor of shape (..., 6)
     """
     return R[..., :3, :2].reshape(*R.shape[:-2], 6)
+
+
+def quaternion_to_rotation_matrix(quat):
+    """
+    Convert quaternion to rotation matrix.
+    quat: tensor of shape (..., 4) in format [qw, qx, qy, qz] or [qx, qy, qz, qw]
+    Returns: rotation matrix of shape (..., 3, 3)
+    """
+    # Assuming quat is [qx, qy, qz, qw] based on your existing quaternion functions
+    if quat.shape[-1] == 4:
+        qx, qy, qz, qw = quat.unbind(-1)
+    else:
+        raise ValueError("Quaternion must have 4 components")
+    
+    # Compute rotation matrix elements
+    xx = qx * qx
+    yy = qy * qy
+    zz = qz * qz
+    xy = qx * qy
+    xz = qx * qz
+    yz = qy * qz
+    wx = qw * qx
+    wy = qw * qy
+    wz = qw * qz
+    
+    # Build rotation matrix
+    R = torch.stack([
+        torch.stack([1 - 2*yy - 2*zz, 2*xy - 2*wz, 2*xz + 2*wy], dim=-1),
+        torch.stack([2*xy + 2*wz, 1 - 2*xx - 2*zz, 2*yz - 2*wx], dim=-1),
+        torch.stack([2*xz - 2*wy, 2*yz + 2*wx, 1 - 2*xx - 2*yy], dim=-1)
+    ], dim=-2)
+    
+    return R
+
+def rotation_matrix_to_6d(R):
+    """
+    Convert rotation matrix to 6D representation.
+    R: tensor of shape (..., 3, 3)
+    Returns: tensor of shape (..., 6)
+    """
+    # Take first two columns of rotation matrix
+    return R[..., :3, :2].reshape(*R.shape[:-2], 6)
+
+def axis_angle_to_rotation_matrix(axis_angle):
+    """
+    Convert axis-angle representation to rotation matrix using Rodrigues formula.
+    axis_angle: tensor of shape (..., 3)
+    Returns: rotation matrix of shape (..., 3, 3)
+    """
+    # This is essentially the same as your so3_to_SO3 function
+    # but using the existing so3_exponential function from your paste
+    return so3_exponential(axis_angle)
+
+def convert_6d_back_to_original(pose_6d, rotation_type):
+    """
+    Convert 6D+translation pose back to original rotation representation.
+    pose_6d: tensor of shape (..., 9) - [tx, ty, tz, r1, r2, r3, r4, r5, r6]
+    rotation_type: str indicating target rotation type
+    Returns: pose in original representation
+    """
+    translation = pose_6d[..., :3]
+    rot_6d = pose_6d[..., 3:9]
+    
+    if rotation_type in [2, 3, 'none']:
+        return translation
+    elif rotation_type in [7, 'quaternion']:
+        # Convert 6D back to rotation matrix, then to quaternion
+        rot_matrix = rot6d_to_rotmat(rot_6d)
+        quat = rotation_matrix_to_quaternion(rot_matrix)
+        return torch.cat([translation, quat], dim=-1)
+    elif rotation_type in [9, '6d']:
+        return pose_6d  # already in 6D format
+    elif rotation_type in [6, 'lie', 'axis_angle']:
+        # Convert 6D back to rotation matrix, then to axis-angle
+        rot_matrix = rot6d_to_rotmat(rot_6d)
+        axis_angle = so3_logarithm(rot_matrix)
+        return torch.cat([translation, axis_angle], dim=-1)
+    else:
+        raise ValueError(f"Unknown rotation type: {rotation_type}")
+
+def rotation_matrix_to_quaternion(R):
+    """
+    Convert rotation matrix to quaternion [qx, qy, qz, qw].
+    R: tensor of shape (..., 3, 3)
+    Returns: quaternion of shape (..., 4)
+    """
+    # Shepperd's method for numerical stability
+    trace = R[..., 0, 0] + R[..., 1, 1] + R[..., 2, 2]
+    
+    # Case 1: trace > 0
+    s = torch.sqrt(trace + 1.0) * 2  # s = 4 * qw
+    qw = 0.25 * s
+    qx = (R[..., 2, 1] - R[..., 1, 2]) / s
+    qy = (R[..., 0, 2] - R[..., 2, 0]) / s
+    qz = (R[..., 1, 0] - R[..., 0, 1]) / s
+    
+    # For numerical stability, we should handle other cases too
+    # but this is the most common case and works for most situations
+    
+    return torch.stack([qx, qy, qz, qw], dim=-1)

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --job-name=KittiPrior
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=1:30:00
+#SBATCH --output=7_1_KittiPrior_10in_20out_k30_Overfit_%A.out
+
+
+source activate led
+module load 2022
+module load CUDA/11.7.0
+cd $HOME/MoTric/7_LED_Prior/
+python main_prior.py --cfg 7_1_KittiPrior_10in_20out_k30 --info 7_1_KittiPrior_10in_20out_k30_Overfit --dataset kitti
