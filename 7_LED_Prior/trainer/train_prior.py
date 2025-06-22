@@ -15,7 +15,7 @@ from utils.config import Config
 from utils.utils import print_log
 
 from torch.utils.data import DataLoader
-from data.dataloader_nba import NBADataset, seq_collate
+#from data.dataloader_nba import NBADataset, seq_collate
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
 import pickle
@@ -858,6 +858,8 @@ class Trainer:
 		self.cfg = Config(config.cfg, config.info)
 
 		self.cfg.dataset = config.dataset #use kitti/oxford spires/newer college dataset if specified in command line
+		self._override_h = None # float or None
+		self._override_lambda = None
 		# ------------------------- prepare logs -------------------------
 		self.log = open(os.path.join(self.cfg.log_dir, 'log.txt'), 'a+')
 		
@@ -1701,7 +1703,6 @@ class Trainer:
 			grad[i] = (lp - lm) / (2 * epsilon)
 
 		return grad
-
 
 	def print_some_stats(self, future, future_rot=None, translation_dims=3):
 		print_log('Length:', future.size(0), self.log)
@@ -2998,7 +2999,7 @@ class Trainer:
 		k_preds_xy: np.ndarray,   # (N,2)
 		local_kde: CustomKDE,     # small-σ KDE
 		save_path: str
-	):
+		):
 		"""
 		Plots BEV of past, SLAM, samples, and the local KDE density.
 		"""
@@ -3052,7 +3053,7 @@ class Trainer:
 		k_preds_xy: np.ndarray,      # (N,2)
 		local_kde: CustomKDE,        # small-σ KDE on k_preds_xy
 		save_path: str
-	):
+		):
 		"""
 		Plots BEV of past, SLAM, samples, local KDE density, and corrected SLAM.
 		"""
@@ -3120,15 +3121,512 @@ class Trainer:
 		return numerator / p
 
 
+
+	def simulate_algorithm_and_correct_clusters_for_bandw(self, checkpoint_path = None, return_metrics=False):
+		ALGORITHM_SETTING = 'simulate_and_correct' # 'simulate', 'simulate_and_correct', ''
+		VISUAL_KDE_ALGO = False # visualise algorithm vs KDE for first trajectory
+		VISUAL_KDE_ALGO_CORR = True # visualise algorithm vs KDE vs correct algorithm for first trajectory
+		Use_Clusters = False
+		
+		#determined automatically
+		# bandw = 0.5 #0.5 #bandwidth for local KDE
+		# λ = 0.5 #0.5 #step size for gradient descent
+		# c = 1 # will move half the bandwidth
+
+		### grid-search mode only
+		override_h      = self._override_h      # either a float or None
+		override_lambda = self._override_lambda # either a float or None
+
+
+		#XXX Exchange from precomputed grid search
+		if Use_Clusters == False:
+			cluster_to_h = {
+				0: 1.4,
+				1: 1.4,
+				2: 1.4,
+				3: 1.4,
+				4: 1.4,
+			}
+			cluster_to_lambda = {
+				0: 2.0,
+				1: 2.0,
+				2: 2.0,
+				3: 2.0,
+				4: 2.0,
+			}
+		### most recent, to activate XXX
+		# clusterer = OfflineTrajectoryCIlusterer(self, num_clusters=5, pca_dim=20)
+		# clusterer.load()  # loads PCA+KMeans
+		# with open('kde_hyperparams.pkl','rb') as f:
+		# 	maps = pickle.load(f)
+		# cluster_to_h, cluster_to_lambda = maps['h'], maps['λ']
+
+		# # for each incoming past_traj:
+		# label = clusterer.predict_cluster(past_traj[None])[0]
+		# h  = cluster_to_h[label]
+		# λ  = cluster_to_lambda[label]
+
+
+		# self.clusterer = OfflineTrajectoryClusterer(self, num_clusters=5, pca_dim=20)
+		# self.clusterer.load()
+
+		#currently inactive
+		# bandw_global = bandw * 10   # eg 10× wider
+		# alpha = 0.0  # influence of global kde (between 0 and 1), eg 0.2
+
+
+		# print('[INFO] Entered new function')
+		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Random_Independent/6_3_Synthetic_Right_Curve_Random_Independent/models/best_checkpoint_epoch_91.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Random_Walk/6_3_Synthetic_Right_Curve_Random_Walk/models/best_checkpoint_epoch_100.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Right_Bias/6_3_Synthetic_Right_Curve_Right_Bias/models/best_checkpoint_epoch_57.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Straight_Random_Independent/6_3_Synthetic_Straight_Random_Independent/models/best_checkpoint_epoch_100.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Straight_Random_Walk/6_3_Synthetic_Straight_Random_Walk/models/best_checkpoint_epoch_87.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Straight_Right_Bias/6_3_Synthetic_Straight_Right_Bias/models/best_checkpoint_epoch_96.pth'
+		
+		# checkpoint_path ='./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_EXCL04/models/best_checkpoint_epoch_27.pth'
+		checkpoint_path = './results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_98.pth'
+		experiment_name = checkpoint_path.split('/')[3]
+
+		if checkpoint_path is not None:
+			self.load_checkpoint(checkpoint_path)
+
+		if Use_Clusters:
+			self.model.eval()
+			self.model_initializer.eval()
+			self.clusterer = OfflineTrajectoryClusterer(self, num_clusters=5, pca_dim=20)
+			self.clusterer.load()
+
+		timesteps = list(range(5, self.cfg.future_frames, 5))
+		if not timesteps or timesteps[-1] != self.cfg.future_frames:
+			timesteps.append(self.cfg.future_frames)
+			
+		performance = {
+			'ADE':       [0.0] * len(timesteps),
+			'FDE':       [0.0] * len(timesteps),
+			'ATE_trans': 0.0
+		}
+		if ALGORITHM_SETTING:
+			# metrics for SLAM
+			performance_slam = {
+				'ADE':       [0.0] * len(timesteps),
+				'FDE':       [0.0] * len(timesteps),
+				'ATE_trans': 0.0
+			}
+
+			if ALGORITHM_SETTING == 'simulate_and_correct':
+				# metrics for KDE correction
+				performance_corrected_slam = {
+					'ADE':       [0.0] * len(timesteps),
+					'FDE':       [0.0] * len(timesteps),
+					'ATE_trans': 0.0
+				}
+				# def filter_outliers(pts, m=3.0):
+				# 	# pts: (K, d)
+				# 	median = np.median(pts, axis=0)
+				# 	mad    = np.median(np.abs(pts - median), axis=0) + 1e-6
+				# 	# keep only those within m*MAD in *all* dims
+				# 	mask = np.all(np.abs(pts - median) <= m * mad, axis=1)
+				# 	return pts[mask]
+				def filter_outliers(pts, radius=None, min_neighbors=1):
+					"""
+					Remove points that have fewer than (min_neighbors) other points
+					within radius. If radius is None, we set it to 1.5× the
+					median pairwise distance.
+					
+					Args:
+						pts: np.ndarray of shape (K, d)
+						radius: float, max distance to count neighbors
+						min_neighbors: int, minimum number of neighbors (excluding self)
+
+					Returns:
+						filtered_pts: np.ndarray of shape (M, d)
+					"""
+					K, d = pts.shape
+					if K <= min_neighbors+1:
+						return pts.copy()  # too few points to filter
+					
+					# pick radius by default from median pairwise distance
+					if radius is None:
+						# fast approximate median: sample 100 pairs
+						idx = np.random.choice(K, size=min(K,100), replace=False)
+						sub = pts[idx]
+						dists = np.linalg.norm(sub[:,None,:] - sub[None,:,:], axis=2)
+						median_dist = np.median(dists)
+						radius = 1.5 * median_dist
+
+					# build neighbor lookup
+					nbrs = NearestNeighbors(radius=radius).fit(pts)
+					# for each point, count neighbors within radius (including self)
+					neigh_indices = nbrs.radius_neighbors(pts, return_distance=False)
+					mask = np.array([len(idxs)-1 >= min_neighbors for idxs in neigh_indices])
+					return pts[mask]
+
+
+		samples = 0
+
+		# Ensure reproducibility for testing
+		def prepare_seed(rand_seed):
+			np.random.seed(rand_seed)
+			random.seed(rand_seed)
+			torch.manual_seed(rand_seed)
+			torch.cuda.manual_seed_all(rand_seed)
+		prepare_seed(42)
+
+
+		with torch.no_grad():
+			for batch_idx, data in enumerate(self.test_loader):
+				# 1) Regular leapfrog preprocessing
+				batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
+				Bflat = past_traj.size(0)
+
+
+				# assign each trajectory in the batch to a cluster
+				if Use_Clusters:
+					labels = self.clusterer.predict_cluster(past_traj)  # shape: (B,)
+					# look up pre‐tuned bandwidths & step‐sizes per cluster
+					# assume you have dicts cluster_to_h and cluster_to_lambda
+					bandw_batch  = np.array([ cluster_to_h[l] for l in labels ])  # shape (B,)
+					lambda_batch = np.array([ cluster_to_lambda[l] for l in labels ])  # shape (B,)
+				else:
+					B = past_traj.size(0)
+					bandw_batch  = np.full((B,), cluster_to_h[0])      # shape (B,)
+					lambda_batch = np.full((B,), cluster_to_lambda[0]) # shape (B,)
+
+
+
+				### --- AUTOMATIC BANDWIDTH & LAMBDA ESTIMATION ---
+				# measure std of SLAM relative step sizes 
+				# raw = data['pre_motion_3D'].cpu().numpy()             # shape [B, N, Tp, D]
+				# # flatten B×N agents to B*N
+				# B_, N_, Tp, D_ = raw.shape
+				# raw_flat = raw.reshape(B_*N_, Tp, D_)
+
+				# # just translation dims
+				# past_abs = raw_flat[:, :, :3]                         # (B*N, Tp, 3)
+				# # frame‐to‐frame displacemnts over the past window
+				# deltas = past_abs[:, 1:, :] - past_abs[:, :-1, :]     # (B*N, Tp-1, 3)
+				# speeds = np.linalg.norm(deltas, axis=2)              # (B*N, Tp-1)
+				# std_slam = speeds.std()                            # overall std of SLAM motion
+				# print(std_slam)
+
+				### -------------------------------------------------
+
+				
+
+				if ALGORITHM_SETTING:
+					# --------- SLAM baseline simulation --------
+					# 2) simulate SLAM baseline (relative coords)
+					# slam_rel = self.simulate_slam_baseline(data)       # (B*N, T_f, D)
+					slam_rel = self.simulate_slam_baseline_linear(data)       # (B*N, T_f, D)
+					slam_preds = slam_rel.unsqueeze(1)                 # (B*N,1,T_f,D)
+
+					# 3) compute SLAM ATE
+					slam_ate = self.compute_ate(slam_preds, fut_traj.unsqueeze(1), self.cfg.dimensions, self.traj_scale)['ate_trans']
+					performance_slam['ATE_trans'] += slam_ate * Bflat
+
+					# 4) compute SLAM ADE/FDE
+					if self.cfg.dimensions in [2,3]:
+						sl_p = slam_preds
+						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)
+					else:
+						sl_p = slam_preds[..., :3]
+						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)[..., :3]
+					dists_sl = torch.norm(sl_g - sl_p, dim=-1) * self.traj_scale
+					for i, t in enumerate(timesteps):
+						idx = min(t-1, dists_sl.size(2)-1)
+						ade_slam = dists_sl[:,:, :idx+1].mean(dim=-1).min(dim=-1)[0].sum()
+						fde_slam = dists_sl[:,:, idx   ].min(dim=-1)[0].sum()
+						performance_slam['ADE'][i] += ade_slam.item()
+						performance_slam['FDE'][i] += fde_slam.item()
+					# -------------------- SLAM -----------------------
+
+				# 4. Generate initial predictions using the initializer model
+				sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
+				sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
+			
+				initializer_preds = sample_prediction + mean_estimation[:, None] #initialiser predictions
+
+				# Generate the refined trajectory via the diffusion process
+				k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, initializer_preds)
+				# print('k_alternative_preds first T:',k_alternative_preds[0,:,0,:3])
+
+				# print(k_alternative_preds.size())  # (B, K, T, D)
+				# print(fut_traj.size()) # (B, T, D)
+				# print(past_traj.size()) # (32, 10, D)
+
+
+				### --------------- Correct algorithm/SLAM predictions with KDE prior built from LED predictions ---------------
+				if ALGORITHM_SETTING == 'simulate_and_correct':
+
+					# 5) Get KDEs on translation dims (one per timestep)
+					k_trans = k_alternative_preds[...,:3].detach().cpu().numpy()  # (B*N, K, T, 3)
+					batch_kdes = []
+					for b in range(k_trans.shape[0]):
+
+						### ----------- determine automatic bandwidth and λ for this batch: -----------
+						if override_h is not None and override_lambda is not None: ###grid search mode
+							bandw = override_h
+							λ = override_lambda
+							# print('Using grid-search bandw and lambda')
+						else:
+							bandw = bandw_batch[b]
+							λ = lambda_batch[b]
+						
+						# if bandw is None or λ is None: # std heuristic
+						# 	print('[INFO] Determine bandwidth automatically')
+						# 	K, T_f, _ = k_trans[b].shape
+						# 	n = K
+						# 	# Silverman's 2D rule-of-thumb: h = 1.06 * sigma * n^(-1/5)
+						# 	bandw = 1.06 * std_slam * (n ** (-1/5))
+						# 	# step size ~ half a sigma:
+						# 	λ = c * bandw
+						# 	### ------------------------------------------
+
+
+						per_t = []
+
+						for t in range(self.cfg.future_frames):
+							# if t ==0 and b==0:
+							# 	print('k_trans at b 0 t 0:', k_trans[b,:,t,:].shape, k_trans[b,:,t,:])
+							k_samples = k_trans[b,:,t,:]
+
+							k_pts_filtered = filter_outliers(k_samples, min_neighbors=1) #k needs to have one neighbour within 1.5 x median distance to not be considered an outlier
+							### Enable to inspect filtering
+							# print('Before and after neighbourhood filtering: ', k_samples.shape, filtered.shape)
+							# print('All k:', k_samples)
+							# k_set = set(map(tuple, k_samples))
+							# f_set = set(map(tuple, filtered))
+							# removed = np.array([pt for pt in k_set - f_set]) # points that were removed
+							# print(f"Removed: {removed}")
+
+
+
+							# kde = CustomKDE(filtered, bandwidth=bandw, range_factor=1.0)
+
+							# original, small bandwidth KDE (per-timestep)
+							local_kde  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
+							# global KDE: same data but very wide bandwidth
+							global_kde = None # CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
+
+							per_t.append((local_kde, global_kde))
+
+						batch_kdes.append(per_t)
+
+
+						# --------- Visualise Algorithm vs KDE prior ----------
+						if VISUAL_KDE_ALGO and b == 0:
+							# only XY dims 
+							past_np  = past_traj[b].cpu().numpy()[:, :2]      # (T_past, 2)
+							slam_np  = slam_rel[b].cpu().numpy()[:, :2]       # (T_future, 2)
+							k_np_all = k_alternative_preds[b].cpu().numpy()[..., :2]  # (K, T_future, 2)
+
+							# filter per‐timestep
+							filtered_list = []
+							for t in range(k_np_all.shape[1]):
+								pts_t      = k_np_all[:, t, :]                  # (K,2) at time t
+								filtered_t = filter_outliers(pts_t, min_neighbors=1)      # maybe fewer than K
+								filtered_list.append(filtered_t)                # list of arrays
+
+							# stack into one big (N,2) array
+							k_pts_filtered = np.vstack(filtered_list)          # (sum_Kt, 2)
+
+							# fit 2D KDE on those filtered samples
+							# kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0) #single local kde, previous
+							local_kde_xy  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
+							# global_kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
+
+							# visualize all of them + density
+							save_path = os.path.join(self.cfg.log_dir, f"bev_alg_vs_kde_{bandw:.4f}_band_{λ:.4f}_λ.png")
+							self.visualize_bev_algorithm_vs_prior(past_np, slam_np, k_pts_filtered, local_kde_xy, save_path)
+							print(f"[INFO] Saved BEV plot to {save_path}")
+							exit()
+						# -------------------------------------------------------
+
+					# 6) Correct SLAM with KDE gradients
+					slam_rel_np = slam_rel.cpu().numpy()  # [B*N, T, D]
+					corrected_rel = slam_rel.clone()
+					# print('λ:', λ)
+
+					for b in range(slam_rel_np.shape[0]):
+						# print('batch:', b)
+						for t in range(slam_rel_np.shape[1]):
+							# print('timestep:', t)
+							local_kde, global_kde = batch_kdes[b][t]
+							pose = slam_rel_np[b,t,:3]  # only translation
+							# print('slam original:', pose)
+							
+							# ----- find mode among the K samples -----
+							# density = kde.pdf(pose[np.newaxis, :])[0]  # density at SLAM
+							# k_samples = k_trans[b, :, t, :]              # shape (K, 3)
+							# dens_s  = kde.pdf(k_samples)                 # (K,)
+							# idx     = np.argmax(dens_s)
+							# mode    = k_samples[idx]                     # (3,)
+							# mode_d  = dens_s[idx]
+							# print everything
+							# print(f" SLAM pose: {pose}   density: {density:.6f}")
+							# print(f" KDE mode: {mode}   mode density: {mode_d:.6f}")
+
+
+
+							# ----- gradient‐step correction -----
+							grad = self.prior_gradient_logl(local_kde, pose) #previous - single kde
+							### global & local KDE - inactive #XXX activate for dual KDE
+							# grad = self.mixture_prior_gradient(local_kde, global_kde, pose, alpha) #mixure of global and local kde. will still go to zero eventually but only when global max bandwidth is reached
+							# print('grad:', grad)
+							norm = np.linalg.norm(grad)
+							# print('norm:', norm)
+							if norm>1: grad/=norm
+							# print('grad:', grad)
+							corrected_rel[b,t,:3] = slam_rel[b,t,:3] + λ * torch.from_numpy(grad).to(slam_rel.device)
+							# print('corrected pose:', corrected_rel[b,t,:3])
+							# print('density at corrected:', kde.pdf(corrected_rel[b,t,:3].detach().cpu().numpy()))
+							# exit()
+
+
+						# --------- Visualise Algorithm vs KDE prior vs corrected algorithm poses ----------
+						if VISUAL_KDE_ALGO_CORR and b == 10:
+							# only XY dims 
+							past_np  = past_traj[b].cpu().numpy()[:, :2]      # (T_past, 2)
+							slam_np  = slam_rel[b].cpu().numpy()[:, :2]       # (T_future, 2)
+							k_np_all = k_alternative_preds[b].cpu().numpy()[..., :2]  # (K, T_future, 2)
+
+							# filter per‐timestep
+							filtered_list = []
+							for t in range(k_np_all.shape[1]):
+								pts_t = k_np_all[:, t, :]                  # (K,2) at time t
+								filtered_t = filter_outliers(pts_t, min_neighbors=1)      # maybe fewer than K
+								filtered_list.append(filtered_t)                # list of arrays
+
+							# stack into one big (N,2) array
+							k_pts_filtered = np.vstack(filtered_list)          # (sum_Kt, 2)
+
+							# fit 2D KDE on those filtered samples
+							# kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0) #single local kde, previous
+							local_kde_xy  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
+							# global_kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
+
+							corrected_np = corrected_rel[b,:, :2].cpu().numpy()    # (T_future, 2)
+
+							save_path = os.path.join(self.cfg.log_dir, f"bev_alg_vs_kde_vs_corrected_{bandw:.4f}_band_{λ:.4f}_λ.png")
+							self.visualize_bev_algorithm_vs_corrected(past_np, slam_np, corrected_np, k_pts_filtered, local_kde_xy, save_path)
+							print(f"[INFO] Saved comparison plot to {save_path}")
+							exit()
+						# -------------------------------------------------------
+
+
+					corrected_preds = corrected_rel.unsqueeze(1) # [B*N,1,T,D]
+
+					# 7) Corrected SLAM metrics
+					# SLAM ATE
+					slam_ate = self.compute_ate(corrected_preds, fut_traj.unsqueeze(1), self.cfg.dimensions, self.traj_scale)['ate_trans']
+					performance_corrected_slam['ATE_trans'] += slam_ate * Bflat
+
+					# Compute SLAM ADE/FDE
+					if self.cfg.dimensions in [2,3]:
+						sl_p = corrected_preds
+						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)
+					else:
+						sl_p = corrected_preds[..., :3]
+						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)[..., :3]
+					dists_sl = torch.norm(sl_g - sl_p, dim=-1) * self.traj_scale
+					for i, t in enumerate(timesteps):
+						idx = min(t-1, dists_sl.size(2)-1)
+						ade_slam = dists_sl[:,:, :idx+1].mean(dim=-1).min(dim=-1)[0].sum()
+						fde_slam = dists_sl[:,:, idx   ].min(dim=-1)[0].sum()
+						performance_corrected_slam['ADE'][i] += ade_slam.item()
+						performance_corrected_slam['FDE'][i] += fde_slam.item()
+
+				### --------------- End of correction ----------------
+
+				samples += Bflat
+				fut_traj = fut_traj.unsqueeze(1)
+
+				# ATE for Leapfrog
+				ate_res = self.compute_ate(k_alternative_preds, fut_traj, self.cfg.dimensions, self.traj_scale)
+				performance['ATE_trans'] += ate_res['ate_trans'] * Bflat
+
+				# FDE and ADE for translation only on Leapfrog
+				if self.cfg.dimensions in [2,3]:
+					pred_trans = k_alternative_preds  # already xy or xyz
+					gt_trans   = fut_traj.repeat(1, k_alternative_preds.size(1), 1, 1)
+				else:
+					pred_trans = k_alternative_preds[..., :3]
+					gt_trans   = fut_traj.repeat(1, k_alternative_preds.size(1), 1, 1)[..., :3]
+				distances = torch.norm(gt_trans - pred_trans, dim=-1) * self.traj_scale
+				for i, time in enumerate(timesteps):
+					max_index = min(time - 1, distances.shape[2] - 1)  # Ensure index does not exceed the array size = future timesteps
+
+					ade = (distances[:, :, :max_index + 1]).mean(dim=-1).min(dim=-1)[0].sum() # ADE: average error over the time window, choose best candidate
+					fde = (distances[:, :, max_index]).min(dim=-1)[0].sum() # FDE: error at the final time step in the window, choose best candidate
+
+					performance['ADE'][i] += ade.item()
+					performance['FDE'][i] += fde.item()
+
+
+
+
+			### Finalise and print results
+			# only for grid search of cluster parameters
+			if return_metrics:
+				ade     = np.mean(performance_corrected_slam['ADE'])  # or however you aggregate
+				fde     = np.mean(performance_corrected_slam['FDE'])
+				ate     = performance_corrected_slam['ATE_trans']
+				return {
+					'slamed_kde_corrected': {
+						'ADE_mean': ade,
+						'FDE_mean': fde,
+						'ATE':      ate,
+					}
+				}
+			else:
+
+				# Leapfrog
+				performance['ATE_trans'] /= samples # normalize ATE
+				for i, t in enumerate(timesteps):
+					
+					# convert to Python floats so float-formatting won’t choke on a numpy scalar/array
+					ade_avg = performance['ADE'][i] / samples
+					fde_avg = performance['FDE'][i] / samples
+					print_log(f'--Leapfrog ADE ({t}): {ade_avg:.4f}\tFDE: {fde_avg:.4f}', self.log)
+
+
+
+				print_log(f'--Leapfrog ATE: {performance["ATE_trans"]:.4f}', self.log)
+
+
+				# SLAM
+				if ALGORITHM_SETTING:
+
+					# Raw algorithm performance
+					performance_slam['ATE_trans'] /= samples
+					for i, t in enumerate(timesteps):
+						ade_s = performance_slam['ADE'][i] / samples
+						fde_s = performance_slam['FDE'][i] / samples
+						print_log(f'--SLAM ADE ({t}): {ade_s:.4f}\tFDE: {fde_s:.4f}', self.log)
+					print_log(f'--SLAM ATE: {performance_slam["ATE_trans"]:.4f}', self.log)
+				
+					# Algorithm performance corrected with KDE
+					if ALGORITHM_SETTING == 'simulate_and_correct':
+
+						performance_corrected_slam['ATE_trans'] /= samples
+						for i, t in enumerate(timesteps):
+							ade_s_corr = performance_corrected_slam['ADE'][i] / samples
+							fde_s_corr = performance_corrected_slam['FDE'][i] / samples
+							print_log(f'--SLAM ADE CORRECTED ({t}): {ade_s_corr:.4f}\tFDE: {fde_s_corr:.4f}', self.log)
+						print_log(f'--SLAM ATE CORRECTED: {performance_corrected_slam["ATE_trans"]:.4f}', self.log)
+
+
+# ----------- not used ---------------
+"""
 	def simulate_algorithm_and_correct_synthetic(self, checkpoint_path = None):
 		ALGORITHM_SETTING = 'simulate_and_correct' # 'simulate', 'simulate_and_correct', ''
 		VISUAL_KDE_ALGO = False # visualise algorithm vs KDE for first trajectory
 		VISUAL_KDE_ALGO_CORR = True # visualise algorithm vs KDE vs correct algorithm for first trajectory
 		
 		#determined automatically
-		bandw = None #0.5 #bandwidth for local KDE
-		λ = None #0.5 #step size for gradient descent
-		c = 3 # will move half the bandwidth
+		bandw = 2.0 #0.5 #bandwidth for local KDE
+		λ = 1.4 #0.5 #step size for gradient descent
+		c = 0.5 # will move half the bandwidth
 
 
 		#currently inactive
@@ -3137,12 +3635,12 @@ class Trainer:
 
 
 		print('[INFO] Entered new function')
-		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Random_Independent/6_3_9D_Synthetic_Right_Curve_Random_Independent/models/best_checkpoint_epoch_65.pth'
-		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Random_Walk/6_3_9D_Synthetic_Right_Curve_Random_Walk/models/best_checkpoint_epoch_80.pth'
-		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Right_Bias/6_3_9D_Synthetic_Right_Curve_Right_Bias/models/best_checkpoint_epoch_80.pth'
-		checkpoint_path ='./results/6_3_Synthetic_Straight_Random_Independent/6_3_9D_Synthetic_Straight_Random_Independent/models/best_checkpoint_epoch_75.pth'
-		# checkpoint_path ='./results/6_3_Synthetic_Straight_Random_Walk/6_3_9D_Synthetic_Straight_Random_Walk/models/best_checkpoint_epoch_80.pth'
-		# checkpoint_path ='./results/6_3_Synthetic_Straight_Right_Bias/6_3_9D_Synthetic_Straight_Right_Bias/models/best_checkpoint_epoch_57.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Random_Independent/6_3_Synthetic_Right_Curve_Random_Independent/models/best_checkpoint_epoch_91.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Random_Walk/6_3_Synthetic_Right_Curve_Random_Walk/models/best_checkpoint_epoch_100.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Right_Curve_Right_Bias/6_3_Synthetic_Right_Curve_Right_Bias/models/best_checkpoint_epoch_57.pth'
+		checkpoint_path ='./results/6_3_Synthetic_Straight_Random_Independent/6_3_Synthetic_Straight_Random_Independent/models/best_checkpoint_epoch_100.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Straight_Random_Walk/6_3_Synthetic_Straight_Random_Walk/models/best_checkpoint_epoch_87.pth'
+		# checkpoint_path ='./results/6_3_Synthetic_Straight_Right_Bias/6_3_Synthetic_Straight_Right_Bias/models/best_checkpoint_epoch_96.pth'
 		experiment_name = checkpoint_path.split('/')[3]
 
 		if checkpoint_path is not None:
@@ -3183,19 +3681,19 @@ class Trainer:
 				# 	mask = np.all(np.abs(pts - median) <= m * mad, axis=1)
 				# 	return pts[mask]
 				def filter_outliers(pts, radius=None, min_neighbors=1):
-					"""
-					Remove points that have fewer than (min_neighbors) other points
-					within `radius`. If radius is None, we set it to 1.5× the
-					median pairwise distance.
 					
-					Args:
-						pts: np.ndarray of shape (K, d)
-						radius: float, max distance to count neighbors
-						min_neighbors: int, minimum number of neighbors (excluding self)
+					# Remove points that have fewer than (min_neighbors) other points
+					# within `radius`. If radius is None, we set it to 1.5× the
+					# median pairwise distance.
+					
+					# Args:
+					# 	pts: np.ndarray of shape (K, d)
+					# 	radius: float, max distance to count neighbors
+					# 	min_neighbors: int, minimum number of neighbors (excluding self)
 
-					Returns:
-						filtered_pts: np.ndarray of shape (M, d)
-					"""
+					# Returns:
+					# 	filtered_pts: np.ndarray of shape (M, d)
+					
 					K, d = pts.shape
 					if K <= min_neighbors+1:
 						return pts.copy()  # too few points to filter
@@ -3535,871 +4033,8 @@ class Trainer:
 						print_log(f'--SLAM ADE CORRECTED ({t}): {ade_s_corr:.4f}\tFDE: {fde_s_corr:.4f}', self.log)
 					print_log(f'--SLAM ATE CORRECTED: {performance_corrected_slam["ATE_trans"]:.4f}', self.log)
 
-	def simulate_algorithm_and_correct_kitti_clusters_for_bandw(self, checkpoint_path = None):
-		ALGORITHM_SETTING = 'simulate_and_correct' # 'simulate', 'simulate_and_correct', ''
-		VISUAL_KDE_ALGO = False # visualise algorithm vs KDE for first trajectory
-		VISUAL_KDE_ALGO_CORR = True # visualise algorithm vs KDE vs correct algorithm for first trajectory
-		
-		#determined automatically
-		# bandw = 0.5 #0.5 #bandwidth for local KDE
-		# λ = 0.5 #0.5 #step size for gradient descent
-		# c = 1 # will move half the bandwidt
-		
-		cluster_to_h = {
-			0: 1,
-			1: 1,
-			2: 1,
-			3: 1,
-			4: 0.5,
-		}
-		cluster_to_lambda = { j: cluster_to_h[j] * 0.5 for j in cluster_to_h }
 
 
-		#currently inactive
-		# bandw_global = bandw * 10   # eg 10× wider
-		# alpha = 0.0  # influence of global kde (between 0 and 1), eg 0.2
-
-
-		print('[INFO] Entered new function')
-		checkpoint_path ='./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_EXCL04/models/best_checkpoint_epoch_48.pth'
-		checkpoint_path = './results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_26.pth'
-		experiment_name = checkpoint_path.split('/')[3]
-
-		if checkpoint_path is not None:
-			self.load_checkpoint(checkpoint_path)
-
-		self.model.eval()
-		self.model_initializer.eval()
-		self.clusterer = OfflineTrajectoryClusterer(self, num_clusters=5, pca_dim=20)
-		self.clusterer.load()
-
-		timesteps = list(range(5, self.cfg.future_frames, 5))
-		if not timesteps or timesteps[-1] != self.cfg.future_frames:
-			timesteps.append(self.cfg.future_frames)
-			
-		performance = {
-			'ADE':       [0.0] * len(timesteps),
-			'FDE':       [0.0] * len(timesteps),
-			'ATE_trans': 0.0
-		}
-		if ALGORITHM_SETTING:
-			# metrics for SLAM
-			performance_slam = {
-				'ADE':       [0.0] * len(timesteps),
-				'FDE':       [0.0] * len(timesteps),
-				'ATE_trans': 0.0
-			}
-
-			if ALGORITHM_SETTING == 'simulate_and_correct':
-				# metrics for KDE correction
-				performance_corrected_slam = {
-					'ADE':       [0.0] * len(timesteps),
-					'FDE':       [0.0] * len(timesteps),
-					'ATE_trans': 0.0
-				}
-				# def filter_outliers(pts, m=3.0):
-				# 	# pts: (K, d)
-				# 	median = np.median(pts, axis=0)
-				# 	mad    = np.median(np.abs(pts - median), axis=0) + 1e-6
-				# 	# keep only those within m*MAD in *all* dims
-				# 	mask = np.all(np.abs(pts - median) <= m * mad, axis=1)
-				# 	return pts[mask]
-				def filter_outliers(pts, radius=None, min_neighbors=1):
-					"""
-					Remove points that have fewer than (min_neighbors) other points
-					within `radius`. If radius is None, we set it to 1.5× the
-					median pairwise distance.
-					
-					Args:
-						pts: np.ndarray of shape (K, d)
-						radius: float, max distance to count neighbors
-						min_neighbors: int, minimum number of neighbors (excluding self)
-
-					Returns:
-						filtered_pts: np.ndarray of shape (M, d)
-					"""
-					K, d = pts.shape
-					if K <= min_neighbors+1:
-						return pts.copy()  # too few points to filter
-					
-					# pick radius by default from median pairwise distance
-					if radius is None:
-						# fast approximate median: sample 100 pairs
-						idx = np.random.choice(K, size=min(K,100), replace=False)
-						sub = pts[idx]
-						dists = np.linalg.norm(sub[:,None,:] - sub[None,:,:], axis=2)
-						median_dist = np.median(dists)
-						radius = 1.5 * median_dist
-
-					# build neighbor lookup
-					nbrs = NearestNeighbors(radius=radius).fit(pts)
-					# for each point, count neighbors within radius (including self)
-					neigh_indices = nbrs.radius_neighbors(pts, return_distance=False)
-					mask = np.array([len(idxs)-1 >= min_neighbors for idxs in neigh_indices])
-					return pts[mask]
-
-
-		samples = 0
-
-		# Ensure reproducibility for testing
-		def prepare_seed(rand_seed):
-			np.random.seed(rand_seed)
-			random.seed(rand_seed)
-			torch.manual_seed(rand_seed)
-			torch.cuda.manual_seed_all(rand_seed)
-		prepare_seed(42)
-
-
-		with torch.no_grad():
-			for batch_idx, data in enumerate(self.test_loader):
-				# 1) Regular leapfrog preprocessing
-				batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
-				Bflat = past_traj.size(0)
-
-
-				# assign each trajectory in the batch to a cluster
-				labels = self.clusterer.predict_cluster(past_traj)  # shape: (B,)
-				# look up pre‐tuned bandwidths & step‐sizes per cluster
-				# assume you have dicts cluster_to_h and cluster_to_lambda
-				bandw_batch  = np.array([ cluster_to_h[l]      for l in labels ])  # shape (B,)
-				lambda_batch = np.array([ cluster_to_lambda[l] for l in labels ])  # shape (B,)
-
-
-
-				### --- AUTOMATIC BANDWIDTH & LAMBDA ESTIMATION ---
-				# measure std of SLAM relative step sizes 
-				# raw = data['pre_motion_3D'].cpu().numpy()             # shape [B, N, Tp, D]
-				# # flatten B×N agents to B*N
-				# B_, N_, Tp, D_ = raw.shape
-				# raw_flat = raw.reshape(B_*N_, Tp, D_)
-
-				# # just translation dims
-				# past_abs = raw_flat[:, :, :3]                         # (B*N, Tp, 3)
-				# # frame‐to‐frame displacemnts over the past window
-				# deltas = past_abs[:, 1:, :] - past_abs[:, :-1, :]     # (B*N, Tp-1, 3)
-				# speeds = np.linalg.norm(deltas, axis=2)              # (B*N, Tp-1)
-				# std_slam = speeds.std()                            # overall std of SLAM motion
-				# print(std_slam)
-
-				### -------------------------------------------------
-
-				
-
-				if ALGORITHM_SETTING:
-					# --------- SLAM baseline simulation --------
-					# 2) simulate SLAM baseline (relative coords)
-					# slam_rel = self.simulate_slam_baseline(data)       # (B*N, T_f, D)
-					slam_rel = self.simulate_slam_baseline_linear(data)       # (B*N, T_f, D)
-					slam_preds = slam_rel.unsqueeze(1)                 # (B*N,1,T_f,D)
-
-					# 3) compute SLAM ATE
-					slam_ate = self.compute_ate(slam_preds, fut_traj.unsqueeze(1), self.cfg.dimensions, self.traj_scale)['ate_trans']
-					performance_slam['ATE_trans'] += slam_ate * Bflat
-
-					# 4) compute SLAM ADE/FDE
-					if self.cfg.dimensions in [2,3]:
-						sl_p = slam_preds
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)
-					else:
-						sl_p = slam_preds[..., :3]
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)[..., :3]
-					dists_sl = torch.norm(sl_g - sl_p, dim=-1) * self.traj_scale
-					for i, t in enumerate(timesteps):
-						idx = min(t-1, dists_sl.size(2)-1)
-						ade_slam = dists_sl[:,:, :idx+1].mean(dim=-1).min(dim=-1)[0].sum()
-						fde_slam = dists_sl[:,:, idx   ].min(dim=-1)[0].sum()
-						performance_slam['ADE'][i] += ade_slam.item()
-						performance_slam['FDE'][i] += fde_slam.item()
-					# -------------------- SLAM -----------------------
-
-				# 4. Generate initial predictions using the initializer model
-				sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
-				sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
-			
-				initializer_preds = sample_prediction + mean_estimation[:, None] #initialiser predictions
-
-				# Generate the refined trajectory via the diffusion process
-				k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, initializer_preds)
-				# print('k_alternative_preds first T:',k_alternative_preds[0,:,0,:3])
-
-				# print(k_alternative_preds.size())  # (B, K, T, D)
-				# print(fut_traj.size()) # (B, T, D)
-				# print(past_traj.size()) # (32, 10, D)
-
-
-				### --------------- Correct algorithm/SLAM predictions with KDE prior built from LED predictions ---------------
-				if ALGORITHM_SETTING == 'simulate_and_correct':
-
-					# 5) Get KDEs on translation dims (one per timestep)
-					k_trans = k_alternative_preds[...,:3].detach().cpu().numpy()  # (B*N, K, T, 3)
-					batch_kdes = []
-					for b in range(k_trans.shape[0]):
-
-						### ----------- determine automatic bandwidth and λ for this batch: -----------
-						bandw = bandw_batch[b]
-						λ = lambda_batch[b]
-						# if bandw is None or λ is None: # std heuristic
-						# 	print('[INFO] Determine bandwidth automatically')
-						# 	K, T_f, _ = k_trans[b].shape
-						# 	n = K
-						# 	# Silverman's 2D rule-of-thumb: h = 1.06 * sigma * n^(-1/5)
-						# 	bandw = 1.06 * std_slam * (n ** (-1/5))
-						# 	# step size ~ half a sigma:
-						# 	λ = c * bandw
-						# 	### ------------------------------------------
-
-
-						per_t = []
-
-						for t in range(self.cfg.future_frames):
-							# if t ==0 and b==0:
-							# 	print('k_trans at b 0 t 0:', k_trans[b,:,t,:].shape, k_trans[b,:,t,:])
-							k_samples = k_trans[b,:,t,:]
-
-							k_pts_filtered = filter_outliers(k_samples, min_neighbors=1) #k needs to have one neighbour within 1.5 x median distance to not be considered an outlier
-							### Enable to inspect filtering
-							# print('Before and after neighbourhood filtering: ', k_samples.shape, filtered.shape)
-							# print('All k:', k_samples)
-							# k_set = set(map(tuple, k_samples))
-							# f_set = set(map(tuple, filtered))
-							# removed = np.array([pt for pt in k_set - f_set]) # points that were removed
-							# print(f"Removed: {removed}")
-
-
-
-							# kde = CustomKDE(filtered, bandwidth=bandw, range_factor=1.0)
-
-							# original, small bandwidth KDE (per-timestep)
-							local_kde  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
-							# global KDE: same data but very wide bandwidth
-							global_kde = None # CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
-
-							per_t.append((local_kde, global_kde))
-
-						batch_kdes.append(per_t)
-
-
-						# --------- Visualise Algorithm vs KDE prior ----------
-						if VISUAL_KDE_ALGO and b == 0:
-							# only XY dims 
-							past_np  = past_traj[b].cpu().numpy()[:, :2]      # (T_past, 2)
-							slam_np  = slam_rel[b].cpu().numpy()[:, :2]       # (T_future, 2)
-							k_np_all = k_alternative_preds[b].cpu().numpy()[..., :2]  # (K, T_future, 2)
-
-							# filter per‐timestep
-							filtered_list = []
-							for t in range(k_np_all.shape[1]):
-								pts_t      = k_np_all[:, t, :]                  # (K,2) at time t
-								filtered_t = filter_outliers(pts_t, min_neighbors=1)      # maybe fewer than K
-								filtered_list.append(filtered_t)                # list of arrays
-
-							# stack into one big (N,2) array
-							k_pts_filtered = np.vstack(filtered_list)          # (sum_Kt, 2)
-
-							# fit 2D KDE on those filtered samples
-							# kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0) #single local kde, previous
-							local_kde_xy  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
-							# global_kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
-
-							# visualize all of them + density
-							save_path = os.path.join(self.cfg.log_dir, f"bev_alg_vs_kde_{bandw:.4f}_band_{λ:.4f}_λ.png")
-							self.visualize_bev_algorithm_vs_prior(past_np, slam_np, k_pts_filtered, local_kde_xy, save_path)
-							print(f"[INFO] Saved BEV plot to {save_path}")
-							exit()
-						# -------------------------------------------------------
-
-					# 6) Correct SLAM with KDE gradients
-					slam_rel_np = slam_rel.cpu().numpy()  # [B*N, T, D]
-					corrected_rel = slam_rel.clone()
-					# print('λ:', λ)
-
-					for b in range(slam_rel_np.shape[0]):
-						# print('batch:', b)
-						for t in range(slam_rel_np.shape[1]):
-							# print('timestep:', t)
-							local_kde, global_kde = batch_kdes[b][t]
-							pose = slam_rel_np[b,t,:3]  # only translation
-							# print('slam original:', pose)
-							
-							# ----- find mode among the K samples -----
-							# density = kde.pdf(pose[np.newaxis, :])[0]  # density at SLAM
-							# k_samples = k_trans[b, :, t, :]              # shape (K, 3)
-							# dens_s  = kde.pdf(k_samples)                 # (K,)
-							# idx     = np.argmax(dens_s)
-							# mode    = k_samples[idx]                     # (3,)
-							# mode_d  = dens_s[idx]
-							# print everything
-							# print(f" SLAM pose: {pose}   density: {density:.6f}")
-							# print(f" KDE mode: {mode}   mode density: {mode_d:.6f}")
-
-
-
-							# ----- gradient‐step correction -----
-							grad = self.prior_gradient_logl(local_kde, pose) #previous - single kde
-							### global & local KDE - inactive #XXX activate for dual KDE
-							# grad = self.mixture_prior_gradient(local_kde, global_kde, pose, alpha) #mixure of global and local kde. will still go to zero eventually but only when global max bandwidth is reached
-							# print('grad:', grad)
-							norm = np.linalg.norm(grad)
-							# print('norm:', norm)
-							if norm>1: grad/=norm
-							# print('grad:', grad)
-							corrected_rel[b,t,:3] = slam_rel[b,t,:3] + λ * torch.from_numpy(grad).to(slam_rel.device)
-							# print('corrected pose:', corrected_rel[b,t,:3])
-							# print('density at corrected:', kde.pdf(corrected_rel[b,t,:3].detach().cpu().numpy()))
-							# exit()
-
-
-						# --------- Visualise Algorithm vs KDE prior vs corrected algorithm poses ----------
-						if VISUAL_KDE_ALGO_CORR and b == 7:
-							# only XY dims 
-							past_np  = past_traj[b].cpu().numpy()[:, :2]      # (T_past, 2)
-							slam_np  = slam_rel[b].cpu().numpy()[:, :2]       # (T_future, 2)
-							k_np_all = k_alternative_preds[b].cpu().numpy()[..., :2]  # (K, T_future, 2)
-
-							# filter per‐timestep
-							filtered_list = []
-							for t in range(k_np_all.shape[1]):
-								pts_t = k_np_all[:, t, :]                  # (K,2) at time t
-								filtered_t = filter_outliers(pts_t, min_neighbors=1)      # maybe fewer than K
-								filtered_list.append(filtered_t)                # list of arrays
-
-							# stack into one big (N,2) array
-							k_pts_filtered = np.vstack(filtered_list)          # (sum_Kt, 2)
-
-							# fit 2D KDE on those filtered samples
-							# kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0) #single local kde, previous
-							local_kde_xy  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
-							# global_kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
-
-							corrected_np = corrected_rel[b,:, :2].cpu().numpy()    # (T_future, 2)
-
-							save_path = os.path.join(self.cfg.log_dir, f"bev_alg_vs_kde_vs_corrected_{bandw:.4f}_band_{λ:.4f}_λ.png")
-							self.visualize_bev_algorithm_vs_corrected(past_np, slam_np, corrected_np, k_pts_filtered, local_kde_xy, save_path)
-							print(f"[INFO] Saved comparison plot to {save_path}")
-							exit()
-						# -------------------------------------------------------
-
-
-					corrected_preds = corrected_rel.unsqueeze(1) # [B*N,1,T,D]
-
-					# 7) Corrected SLAM metrics
-					# SLAM ATE
-					slam_ate = self.compute_ate(corrected_preds, fut_traj.unsqueeze(1), self.cfg.dimensions, self.traj_scale)['ate_trans']
-					performance_corrected_slam['ATE_trans'] += slam_ate * Bflat
-
-					# Compute SLAM ADE/FDE
-					if self.cfg.dimensions in [2,3]:
-						sl_p = corrected_preds
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)
-					else:
-						sl_p = corrected_preds[..., :3]
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)[..., :3]
-					dists_sl = torch.norm(sl_g - sl_p, dim=-1) * self.traj_scale
-					for i, t in enumerate(timesteps):
-						idx = min(t-1, dists_sl.size(2)-1)
-						ade_slam = dists_sl[:,:, :idx+1].mean(dim=-1).min(dim=-1)[0].sum()
-						fde_slam = dists_sl[:,:, idx   ].min(dim=-1)[0].sum()
-						performance_corrected_slam['ADE'][i] += ade_slam.item()
-						performance_corrected_slam['FDE'][i] += fde_slam.item()
-
-				### --------------- End of correction ----------------
-
-				samples += Bflat
-				fut_traj = fut_traj.unsqueeze(1)
-
-				# ATE for Leapfrog
-				ate_res = self.compute_ate(k_alternative_preds, fut_traj, self.cfg.dimensions, self.traj_scale)
-				performance['ATE_trans'] += ate_res['ate_trans'] * Bflat
-
-				# FDE and ADE for translation only on Leapfrog
-				if self.cfg.dimensions in [2,3]:
-					pred_trans = k_alternative_preds  # already xy or xyz
-					gt_trans   = fut_traj.repeat(1, k_alternative_preds.size(1), 1, 1)
-				else:
-					pred_trans = k_alternative_preds[..., :3]
-					gt_trans   = fut_traj.repeat(1, k_alternative_preds.size(1), 1, 1)[..., :3]
-				distances = torch.norm(gt_trans - pred_trans, dim=-1) * self.traj_scale
-				for i, time in enumerate(timesteps):
-					max_index = min(time - 1, distances.shape[2] - 1)  # Ensure index does not exceed the array size = future timesteps
-
-					ade = (distances[:, :, :max_index + 1]).mean(dim=-1).min(dim=-1)[0].sum() # ADE: average error over the time window, choose best candidate
-					fde = (distances[:, :, max_index]).min(dim=-1)[0].sum() # FDE: error at the final time step in the window, choose best candidate
-
-					performance['ADE'][i] += ade.item()
-					performance['FDE'][i] += fde.item()
-
-
-
-			
-			### save KDE density-per-t histograms
-			# self.GT_KDE_density_histograms(all_densities_by_time, hist_out_dir)
-
-			### Finalise and print results
-			# Leapfrog
-			performance['ATE_trans'] /= samples # normalize ATE
-			for i, t in enumerate(timesteps):
-				
-				# convert to Python floats so float-formatting won’t choke on a numpy scalar/array
-				ade_avg = performance['ADE'][i] / samples
-				fde_avg = performance['FDE'][i] / samples
-				print_log(f'--Leapfrog ADE ({t}): {ade_avg:.4f}\tFDE: {fde_avg:.4f}', self.log)
-
-
-
-			print_log(f'--Leapfrog ATE: {performance["ATE_trans"]:.4f}', self.log)
-
-
-			# SLAM
-			if ALGORITHM_SETTING:
-
-				# Raw algorithm performance
-				performance_slam['ATE_trans'] /= samples
-				for i, t in enumerate(timesteps):
-					ade_s = performance_slam['ADE'][i] / samples
-					fde_s = performance_slam['FDE'][i] / samples
-					print_log(f'--SLAM ADE ({t}): {ade_s:.4f}\tFDE: {fde_s:.4f}', self.log)
-				print_log(f'--SLAM ATE: {performance_slam["ATE_trans"]:.4f}', self.log)
-			
-				# Algorithm performance corrected with KDE
-				if ALGORITHM_SETTING == 'simulate_and_correct':
-
-					performance_corrected_slam['ATE_trans'] /= samples
-					for i, t in enumerate(timesteps):
-						ade_s_corr = performance_corrected_slam['ADE'][i] / samples
-						fde_s_corr = performance_corrected_slam['FDE'][i] / samples
-						print_log(f'--SLAM ADE CORRECTED ({t}): {ade_s_corr:.4f}\tFDE: {fde_s_corr:.4f}', self.log)
-					print_log(f'--SLAM ATE CORRECTED: {performance_corrected_slam["ATE_trans"]:.4f}', self.log)
-
-	def simulate_algorithm_and_correct_kitti_std_for_band(self, checkpoint_path = None):
-		ALGORITHM_SETTING = 'simulate_and_correct' # 'simulate', 'simulate_and_correct', ''
-		VISUAL_KDE_ALGO = False # visualise algorithm vs KDE for first trajectory
-		VISUAL_KDE_ALGO_CORR = False # visualise algorithm vs KDE vs correct algorithm for first trajectory
-		
-		#determined automatically
-		bandw = 0.5 #0.5 #bandwidth for local KDE
-		λ = 0.5 #0.5 #step size for gradient descent
-		c = 1 # will move half the bandwidth
-
-
-		#currently inactive
-		# bandw_global = bandw * 10   # eg 10× wider
-		# alpha = 0.0  # influence of global kde (between 0 and 1), eg 0.2
-
-
-		print('[INFO] Entered new function')
-		checkpoint_path ='./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_EXCL04/models/best_checkpoint_epoch_48.pth'
-		experiment_name = checkpoint_path.split('/')[3]
-
-		if checkpoint_path is not None:
-			self.load_checkpoint(checkpoint_path)
-
-		self.model.eval()
-		self.model_initializer.eval()
-
-		### most recent, to activate XXX
-		# clusterer = OfflineTrajectoryClusterer(self, num_clusters=5, pca_dim=20)
-		# clusterer.load()  # loads PCA+KMeans
-		# with open('kde_hyperparams.pkl','rb') as f:
-		# 	maps = pickle.load(f)
-		# cluster_to_h, cluster_to_lambda = maps['h'], maps['λ']
-
-		# # for each incoming past_traj:
-		# label = clusterer.predict_cluster(past_traj[None])[0]
-		# h  = cluster_to_h[label]
-		# λ  = cluster_to_lambda[label]
-
-
-		# self.clusterer = OfflineTrajectoryClusterer(self, num_clusters=5, pca_dim=20)
-		# self.clusterer.load()
-
-		timesteps = list(range(5, self.cfg.future_frames, 5))
-		if not timesteps or timesteps[-1] != self.cfg.future_frames:
-			timesteps.append(self.cfg.future_frames)
-			
-		performance = {
-			'ADE':       [0.0] * len(timesteps),
-			'FDE':       [0.0] * len(timesteps),
-			'ATE_trans': 0.0
-		}
-		if ALGORITHM_SETTING:
-			# metrics for SLAM
-			performance_slam = {
-				'ADE':       [0.0] * len(timesteps),
-				'FDE':       [0.0] * len(timesteps),
-				'ATE_trans': 0.0
-			}
-
-			if ALGORITHM_SETTING == 'simulate_and_correct':
-				# metrics for KDE correction
-				performance_corrected_slam = {
-					'ADE':       [0.0] * len(timesteps),
-					'FDE':       [0.0] * len(timesteps),
-					'ATE_trans': 0.0
-				}
-				# def filter_outliers(pts, m=3.0):
-				# 	# pts: (K, d)
-				# 	median = np.median(pts, axis=0)
-				# 	mad    = np.median(np.abs(pts - median), axis=0) + 1e-6
-				# 	# keep only those within m*MAD in *all* dims
-				# 	mask = np.all(np.abs(pts - median) <= m * mad, axis=1)
-				# 	return pts[mask]
-				def filter_outliers(pts, radius=None, min_neighbors=1):
-					"""
-					Remove points that have fewer than (min_neighbors) other points
-					within `radius`. If radius is None, we set it to 1.5× the
-					median pairwise distance.
-					
-					Args:
-						pts: np.ndarray of shape (K, d)
-						radius: float, max distance to count neighbors
-						min_neighbors: int, minimum number of neighbors (excluding self)
-
-					Returns:
-						filtered_pts: np.ndarray of shape (M, d)
-					"""
-					K, d = pts.shape
-					if K <= min_neighbors+1:
-						return pts.copy()  # too few points to filter
-					
-					# pick radius by default from median pairwise distance
-					if radius is None:
-						# fast approximate median: sample 100 pairs
-						idx = np.random.choice(K, size=min(K,100), replace=False)
-						sub = pts[idx]
-						dists = np.linalg.norm(sub[:,None,:] - sub[None,:,:], axis=2)
-						median_dist = np.median(dists)
-						radius = 1.5 * median_dist
-
-					# build neighbor lookup
-					nbrs = NearestNeighbors(radius=radius).fit(pts)
-					# for each point, count neighbors within radius (including self)
-					neigh_indices = nbrs.radius_neighbors(pts, return_distance=False)
-					mask = np.array([len(idxs)-1 >= min_neighbors for idxs in neigh_indices])
-					return pts[mask]
-
-
-		samples = 0
-
-		# Ensure reproducibility for testing
-		def prepare_seed(rand_seed):
-			np.random.seed(rand_seed)
-			random.seed(rand_seed)
-			torch.manual_seed(rand_seed)
-			torch.cuda.manual_seed_all(rand_seed)
-		prepare_seed(42)
-
-
-		with torch.no_grad():
-			for batch_idx, data in enumerate(self.test_loader):
-				# 1) Regular leapfrog preprocessing
-				batch_size, traj_mask, past_traj, fut_traj = self.data_preprocess(data)
-				Bflat = past_traj.size(0)
-
-
-				### --- AUTOMATIC BANDWIDTH & LAMBDA ESTIMATION ---
-				# measure std of SLAM relative step sizes 
-				raw = data['pre_motion_3D'].cpu().numpy()             # shape [B, N, Tp, D]
-				# flatten B×N agents to B*N
-				B_, N_, Tp, D_ = raw.shape
-				raw_flat = raw.reshape(B_*N_, Tp, D_)
-
-				# just translation dims
-				past_abs = raw_flat[:, :, :3]                         # (B*N, Tp, 3)
-				# frame‐to‐frame displacemnts over the past window
-				deltas = past_abs[:, 1:, :] - past_abs[:, :-1, :]     # (B*N, Tp-1, 3)
-				speeds = np.linalg.norm(deltas, axis=2)              # (B*N, Tp-1)
-				std_slam = speeds.std()                            # overall std of SLAM motion
-				print(std_slam)
-
-				### -------------------------------------------------
-
-				
-
-				if ALGORITHM_SETTING:
-					# --------- SLAM baseline simulation --------
-					# 2) simulate SLAM baseline (relative coords)
-					# slam_rel = self.simulate_slam_baseline(data)       # (B*N, T_f, D)
-					slam_rel = self.simulate_slam_baseline_linear(data)       # (B*N, T_f, D)
-					slam_preds = slam_rel.unsqueeze(1)                 # (B*N,1,T_f,D)
-
-					# 3) compute SLAM ATE
-					slam_ate = self.compute_ate(slam_preds, fut_traj.unsqueeze(1), self.cfg.dimensions, self.traj_scale)['ate_trans']
-					performance_slam['ATE_trans'] += slam_ate * Bflat
-
-					# 4) compute SLAM ADE/FDE
-					if self.cfg.dimensions in [2,3]:
-						sl_p = slam_preds
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)
-					else:
-						sl_p = slam_preds[..., :3]
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)[..., :3]
-					dists_sl = torch.norm(sl_g - sl_p, dim=-1) * self.traj_scale
-					for i, t in enumerate(timesteps):
-						idx = min(t-1, dists_sl.size(2)-1)
-						ade_slam = dists_sl[:,:, :idx+1].mean(dim=-1).min(dim=-1)[0].sum()
-						fde_slam = dists_sl[:,:, idx   ].min(dim=-1)[0].sum()
-						performance_slam['ADE'][i] += ade_slam.item()
-						performance_slam['FDE'][i] += fde_slam.item()
-					# -------------------- SLAM -----------------------
-
-				# 4. Generate initial predictions using the initializer model
-				sample_prediction, mean_estimation, variance_estimation = self.model_initializer(past_traj, traj_mask)
-				sample_prediction = torch.exp(variance_estimation/2)[..., None, None] * sample_prediction / sample_prediction.std(dim=1).mean(dim=(1, 2))[:, None, None, None]
-			
-				initializer_preds = sample_prediction + mean_estimation[:, None] #initialiser predictions
-
-				# Generate the refined trajectory via the diffusion process
-				k_alternative_preds = self.p_sample_loop_accelerate(past_traj, traj_mask, initializer_preds)
-				# print('k_alternative_preds first T:',k_alternative_preds[0,:,0,:3])
-
-				# print(k_alternative_preds.size())  # (B, K, T, D)
-				# print(fut_traj.size()) # (B, T, D)
-				# print(past_traj.size()) # (32, 10, D)
-
-
-				### --------------- Correct algorithm/SLAM predictions with KDE prior built from LED predictions ---------------
-				if ALGORITHM_SETTING == 'simulate_and_correct':
-
-					# 5) Get KDEs on translation dims (one per timestep)
-					k_trans = k_alternative_preds[...,:3].detach().cpu().numpy()  # (B*N, K, T, 3)
-					batch_kdes = []
-					for b in range(k_trans.shape[0]):
-
-						### ----------- determine automatic bandwidth and λ for this batch: -----------
-						if bandw is None or λ is None:
-							print('[INFO] Determine bandwidth automatically')
-							K, T_f, _ = k_trans[b].shape
-							n = K
-							# Silverman's 2D rule-of-thumb: h = 1.06 * sigma * n^(-1/5)
-							bandw = 1.06 * std_slam * (n ** (-1/5))
-							# step size ~ half a sigma:
-							λ = c * bandw
-							### ------------------------------------------
-
-
-						per_t = []
-
-						for t in range(self.cfg.future_frames):
-							# if t ==0 and b==0:
-							# 	print('k_trans at b 0 t 0:', k_trans[b,:,t,:].shape, k_trans[b,:,t,:])
-							k_samples = k_trans[b,:,t,:]
-
-							k_pts_filtered = filter_outliers(k_samples, min_neighbors=1) #k needs to have one neighbour within 1.5 x median distance to not be considered an outlier
-							### Enable to inspect filtering
-							# print('Before and after neighbourhood filtering: ', k_samples.shape, filtered.shape)
-							# print('All k:', k_samples)
-							# k_set = set(map(tuple, k_samples))
-							# f_set = set(map(tuple, filtered))
-							# removed = np.array([pt for pt in k_set - f_set]) # points that were removed
-							# print(f"Removed: {removed}")
-
-
-
-							# kde = CustomKDE(filtered, bandwidth=bandw, range_factor=1.0)
-
-							# original, small bandwidth KDE (per-timestep)
-							local_kde  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
-							# global KDE: same data but very wide bandwidth
-							global_kde = None # CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
-
-							per_t.append((local_kde, global_kde))
-
-						batch_kdes.append(per_t)
-
-
-						# --------- Visualise Algorithm vs KDE prior ----------
-						if VISUAL_KDE_ALGO and b == 0:
-							# only XY dims 
-							past_np  = past_traj[b].cpu().numpy()[:, :2]      # (T_past, 2)
-							slam_np  = slam_rel[b].cpu().numpy()[:, :2]       # (T_future, 2)
-							k_np_all = k_alternative_preds[b].cpu().numpy()[..., :2]  # (K, T_future, 2)
-
-							# filter per‐timestep
-							filtered_list = []
-							for t in range(k_np_all.shape[1]):
-								pts_t      = k_np_all[:, t, :]                  # (K,2) at time t
-								filtered_t = filter_outliers(pts_t, min_neighbors=1)      # maybe fewer than K
-								filtered_list.append(filtered_t)                # list of arrays
-
-							# stack into one big (N,2) array
-							k_pts_filtered = np.vstack(filtered_list)          # (sum_Kt, 2)
-
-							# fit 2D KDE on those filtered samples
-							# kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0) #single local kde, previous
-							local_kde_xy  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
-							# global_kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
-
-							# visualize all of them + density
-							save_path = os.path.join(self.cfg.log_dir, f"bev_alg_vs_kde_{bandw:.4f}_band_{λ:.4f}_λ.png")
-							self.visualize_bev_algorithm_vs_prior(past_np, slam_np, k_pts_filtered, local_kde_xy, save_path)
-							print(f"[INFO] Saved BEV plot to {save_path}")
-							exit()
-						# -------------------------------------------------------
-
-					# 6) Correct SLAM with KDE gradients
-					slam_rel_np = slam_rel.cpu().numpy()  # [B*N, T, D]
-					corrected_rel = slam_rel.clone()
-					# print('λ:', λ)
-
-					for b in range(slam_rel_np.shape[0]):
-						# print('batch:', b)
-						for t in range(slam_rel_np.shape[1]):
-							# print('timestep:', t)
-							local_kde, global_kde = batch_kdes[b][t]
-							pose = slam_rel_np[b,t,:3]  # only translation
-							# print('slam original:', pose)
-							
-							# ----- find mode among the K samples -----
-							# density = kde.pdf(pose[np.newaxis, :])[0]  # density at SLAM
-							# k_samples = k_trans[b, :, t, :]              # shape (K, 3)
-							# dens_s  = kde.pdf(k_samples)                 # (K,)
-							# idx     = np.argmax(dens_s)
-							# mode    = k_samples[idx]                     # (3,)
-							# mode_d  = dens_s[idx]
-							# print everything
-							# print(f" SLAM pose: {pose}   density: {density:.6f}")
-							# print(f" KDE mode: {mode}   mode density: {mode_d:.6f}")
-
-
-
-							# ----- gradient‐step correction -----
-							grad = self.prior_gradient_logl(local_kde, pose) #previous - single kde
-							### global & local KDE - inactive #XXX activate for dual KDE
-							# grad = self.mixture_prior_gradient(local_kde, global_kde, pose, alpha) #mixure of global and local kde. will still go to zero eventually but only when global max bandwidth is reached
-							# print('grad:', grad)
-							norm = np.linalg.norm(grad)
-							# print('norm:', norm)
-							if norm>1: grad/=norm
-							# print('grad:', grad)
-							corrected_rel[b,t,:3] = slam_rel[b,t,:3] + λ * torch.from_numpy(grad).to(slam_rel.device)
-							# print('corrected pose:', corrected_rel[b,t,:3])
-							# print('density at corrected:', kde.pdf(corrected_rel[b,t,:3].detach().cpu().numpy()))
-							# exit()
-
-
-						# --------- Visualise Algorithm vs KDE prior vs corrected algorithm poses ----------
-						if VISUAL_KDE_ALGO_CORR and b == 7:
-							# only XY dims 
-							past_np  = past_traj[b].cpu().numpy()[:, :2]      # (T_past, 2)
-							slam_np  = slam_rel[b].cpu().numpy()[:, :2]       # (T_future, 2)
-							k_np_all = k_alternative_preds[b].cpu().numpy()[..., :2]  # (K, T_future, 2)
-
-							# filter per‐timestep
-							filtered_list = []
-							for t in range(k_np_all.shape[1]):
-								pts_t = k_np_all[:, t, :]                  # (K,2) at time t
-								filtered_t = filter_outliers(pts_t, min_neighbors=1)      # maybe fewer than K
-								filtered_list.append(filtered_t)                # list of arrays
-
-							# stack into one big (N,2) array
-							k_pts_filtered = np.vstack(filtered_list)          # (sum_Kt, 2)
-
-							# fit 2D KDE on those filtered samples
-							# kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0) #single local kde, previous
-							local_kde_xy  = CustomKDE(k_pts_filtered, bandwidth=bandw, range_factor=1.0)
-							# global_kde_xy = CustomKDE(k_pts_filtered, bandwidth=bandw_global, range_factor=1.0)
-
-							corrected_np = corrected_rel[b,:, :2].cpu().numpy()    # (T_future, 2)
-
-							save_path = os.path.join(self.cfg.log_dir, f"bev_alg_vs_kde_vs_corrected_{bandw:.4f}_band_{λ:.4f}_λ.png")
-							self.visualize_bev_algorithm_vs_corrected(past_np, slam_np, corrected_np, k_pts_filtered, local_kde_xy, save_path)
-							print(f"[INFO] Saved comparison plot to {save_path}")
-							exit()
-						# -------------------------------------------------------
-
-
-					corrected_preds = corrected_rel.unsqueeze(1) # [B*N,1,T,D]
-
-					# 7) Corrected SLAM metrics
-					# SLAM ATE
-					slam_ate = self.compute_ate(corrected_preds, fut_traj.unsqueeze(1), self.cfg.dimensions, self.traj_scale)['ate_trans']
-					performance_corrected_slam['ATE_trans'] += slam_ate * Bflat
-
-					# Compute SLAM ADE/FDE
-					if self.cfg.dimensions in [2,3]:
-						sl_p = corrected_preds
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)
-					else:
-						sl_p = corrected_preds[..., :3]
-						sl_g = fut_traj.unsqueeze(1).repeat(1,1,1,1)[..., :3]
-					dists_sl = torch.norm(sl_g - sl_p, dim=-1) * self.traj_scale
-					for i, t in enumerate(timesteps):
-						idx = min(t-1, dists_sl.size(2)-1)
-						ade_slam = dists_sl[:,:, :idx+1].mean(dim=-1).min(dim=-1)[0].sum()
-						fde_slam = dists_sl[:,:, idx   ].min(dim=-1)[0].sum()
-						performance_corrected_slam['ADE'][i] += ade_slam.item()
-						performance_corrected_slam['FDE'][i] += fde_slam.item()
-
-				### --------------- End of correction ----------------
-
-				samples += Bflat
-				fut_traj = fut_traj.unsqueeze(1)
-
-				# ATE for Leapfrog
-				ate_res = self.compute_ate(k_alternative_preds, fut_traj, self.cfg.dimensions, self.traj_scale)
-				performance['ATE_trans'] += ate_res['ate_trans'] * Bflat
-
-				# FDE and ADE for translation only on Leapfrog
-				if self.cfg.dimensions in [2,3]:
-					pred_trans = k_alternative_preds  # already xy or xyz
-					gt_trans   = fut_traj.repeat(1, k_alternative_preds.size(1), 1, 1)
-				else:
-					pred_trans = k_alternative_preds[..., :3]
-					gt_trans   = fut_traj.repeat(1, k_alternative_preds.size(1), 1, 1)[..., :3]
-				distances = torch.norm(gt_trans - pred_trans, dim=-1) * self.traj_scale
-				for i, time in enumerate(timesteps):
-					max_index = min(time - 1, distances.shape[2] - 1)  # Ensure index does not exceed the array size = future timesteps
-
-					ade = (distances[:, :, :max_index + 1]).mean(dim=-1).min(dim=-1)[0].sum() # ADE: average error over the time window, choose best candidate
-					fde = (distances[:, :, max_index]).min(dim=-1)[0].sum() # FDE: error at the final time step in the window, choose best candidate
-
-					performance['ADE'][i] += ade.item()
-					performance['FDE'][i] += fde.item()
-
-
-
-			
-			### save KDE density-per-t histograms
-			# self.GT_KDE_density_histograms(all_densities_by_time, hist_out_dir)
-
-			### Finalise and print results
-			# Leapfrog
-			performance['ATE_trans'] /= samples # normalize ATE
-			for i, t in enumerate(timesteps):
-				
-				# convert to Python floats so float-formatting won’t choke on a numpy scalar/array
-				ade_avg = performance['ADE'][i] / samples
-				fde_avg = performance['FDE'][i] / samples
-				print_log(f'--Leapfrog ADE ({t}): {ade_avg:.4f}\tFDE: {fde_avg:.4f}', self.log)
-
-
-
-			print_log(f'--Leapfrog ATE: {performance["ATE_trans"]:.4f}', self.log)
-
-
-			# SLAM
-			if ALGORITHM_SETTING:
-
-				# Raw algorithm performance
-				performance_slam['ATE_trans'] /= samples
-				for i, t in enumerate(timesteps):
-					ade_s = performance_slam['ADE'][i] / samples
-					fde_s = performance_slam['FDE'][i] / samples
-					print_log(f'--SLAM ADE ({t}): {ade_s:.4f}\tFDE: {fde_s:.4f}', self.log)
-				print_log(f'--SLAM ATE: {performance_slam["ATE_trans"]:.4f}', self.log)
-			
-				# Algorithm performance corrected with KDE
-				if ALGORITHM_SETTING == 'simulate_and_correct':
-
-					performance_corrected_slam['ATE_trans'] /= samples
-					for i, t in enumerate(timesteps):
-						ade_s_corr = performance_corrected_slam['ADE'][i] / samples
-						fde_s_corr = performance_corrected_slam['FDE'][i] / samples
-						print_log(f'--SLAM ADE CORRECTED ({t}): {ade_s_corr:.4f}\tFDE: {fde_s_corr:.4f}', self.log)
-					print_log(f'--SLAM ATE CORRECTED: {performance_corrected_slam["ATE_trans"]:.4f}', self.log)
-
-# ----------- not used ---------------
-"""
 def save_vis_data(self):
 	
 	### Save the visualization data.

@@ -380,7 +380,7 @@ def plot_noisy_vs_gt_trajectory(SE3_poses_gt, SE3_poses_noisy, past_window_size,
 
 if __name__ == "__main__":
     # Example usage
-    output_dir = "synthetic_data/"
+    output_dir = "datasets/synthetic"
     
     ### GENERATE TRAJECTORY DATA
     # Generate dataset with right curve motion

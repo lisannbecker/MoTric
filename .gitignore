@@ -1,14 +1,15 @@
 MID/
-Spires/
-NewerCollege/
+datasets/
+SplaTAM_with_PoseNet/
+archive/
 
-0_LED_Backup/results
-1_LED_Backup_Kitti_Original_Params/results
-2_LED_Kitti_Dynamic_Params/results
-3_LED_Kitti_3D_Dynamic/results
-4_LED_Kitti_6D_Dynamic/results
-5_LED_Kitti_BetterCheckpoints/results
-6_LED_Prior/results
+0_LED_Backup/results/**/models/
+1_LED_Backup_Kitti_Original_Params/results/**/models/
+2_LED_Kitti_Dynamic_Params/results/**/models/
+3_LED_Kitti_3D_Dynamic/results/**/models/
+4_LED_Kitti_6D_Dynamic/results/**/models/
+5_LED_Kitti_BetterCheckpoints/results/**/models/
+6_LED_Prior/results/**/models/
 
 
 0_LED_Backup/data
@@ -31,25 +32,16 @@ NewerCollege/
 
 /SplaTAM/*
 !/SplaTAM/_prior_integration.py
-!/SplaTAM/_rotation_utils_old.py
 !/SplaTAM/_rotation_utils.py
 !/SplaTAM/scripts/
 !/SplaTAM/scripts/splatam.py
 
-
-
 SplaTAM_with_PoseNet/diff-gaussian-rasterization-w-depth.git
 
-KITTI_odometry/*
-!KITTI_odometry/dataset/
-KITTI_odometry/dataset/*
-!KITTI_odometry/dataset/depth_sorting.sh
-_Archive/
-_Archive/Kitti_2D_LED_20epochs
-XTrainLEDKitti.py
 
-SplaTAM_with_PoseNet
-Synthetic/**/*.txt
+
+
+
 
 
 # Byte-compiled / optimized / DLL files

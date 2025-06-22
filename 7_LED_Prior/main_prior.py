@@ -28,7 +28,7 @@ def main(config):
 	elif config.train==2:
 		t.simulate_algorithm_and_correct_synthetic()
 	elif config.train==3:
-		t.simulate_algorithm_and_correct_kitti_clusters_for_bandw()
+		t.simulate_algorithm_and_correct_clusters_for_bandw()
 
 if __name__ == "__main__":
 	config = parse_config()

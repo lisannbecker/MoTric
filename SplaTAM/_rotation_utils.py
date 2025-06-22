@@ -242,3 +242,26 @@ def rotation_matrix_to_quaternion(R):
     # but this is the most common case and works for most situations
     
     return torch.stack([qx, qy, qz, qw], dim=-1)
+
+def pose_to_6d_translation(pose, rotation_type=None):
+    """Convert pose to [tx, ty, tz, r1, r2, r3, r4, r5, r6] format"""
+    if rotation_type is None:
+        rotation_type = rotation_type
+        
+    if rotation_type == 'none':
+        return pose  # assume already [tx, ty, tz]
+    elif rotation_type == 'quaternion':
+        # Convert quat to 6D rotation
+        quat = pose[..., 3:7]  # [qw, qx, qy, qz]
+        rot_matrix = quaternion_to_rotation_matrix(quat)
+        rot_6d = rotation_matrix_to_6d(rot_matrix)
+        return torch.cat([pose[..., :3], rot_6d], dim=-1)
+    elif rotation_type == '6d':
+        return pose  # already in correct format
+    elif rotation_type == 'lie':
+        # Convert axis-angle to 6D
+        rot_matrix = axis_angle_to_rotation_matrix(pose[..., 3:6])
+        rot_6d = rotation_matrix_to_6d(rot_matrix)
+        return torch.cat([pose[..., :3], rot_6d], dim=-1)
+    else:
+        return pose  # fallback to original

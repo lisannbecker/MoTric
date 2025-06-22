@@ -1,0 +1,749 @@
+***************************************************************************************************** 
+* WARNING: The 2022 software stack is deprecated. Please consider switching to
+the latest 2024 * 
+* software stack, or the older 2023 software stack. * 
+* * 
+* If you have any question, please contact us via
+http://servicedesk.surfsara.nl. * 
+***************************************************************************************************** 
+
+Configuration:
+description: LED
+results_root_dir: results
+dataset: kitti
+dimensions: 7
+past_frames: 10
+future_frames: 20
+min_past_frames: 10
+min_future_frames: 20
+k_preds: 30
+synthetic_gt: straight
+synthetic_noise: random_independent
+traj_mean: [14, 7.5]
+traj_scale: 1
+relative: False
+normalised: False
+overfitting: True
+selected_trajectories: False
+pretrained_core_denoising_model: ./results/checkpoints/base_diffusion_model.p
+debug: False
+diffusion: {'steps': 150, 'beta_start': 0.0001, 'beta_end': 0.05, 'beta_schedule': 'linear'}
+lr: 0.001
+train_batch_size: 64
+test_batch_size: 64
+num_epochs: 100
+test_interval: 1
+lr_scheduler: step
+decay_step: 8
+decay_gamma: 0.5
+
+[INFO] KITTI dataset (1 agent).
+Overfitting: True
+file name & length /scratch-shared/lbecker/dataset/poses/00.txt 4512
+file name & length /scratch-shared/lbecker/dataset/poses/01.txt 1072
+file name & length /scratch-shared/lbecker/dataset/poses/02.txt 4632
+file name & length /scratch-shared/lbecker/dataset/poses/03.txt 772
+file name & length /scratch-shared/lbecker/dataset/poses/04.txt 242
+file name & length /scratch-shared/lbecker/dataset/poses/05.txt 2732
+file name & length /scratch-shared/lbecker/dataset/poses/06.txt 1072
+file name & length /scratch-shared/lbecker/dataset/poses/07.txt 1072
+file name & length /scratch-shared/lbecker/dataset/poses/08.txt 4042
+file name & length /scratch-shared/lbecker/dataset/poses/09.txt 1562
+file name & length /scratch-shared/lbecker/dataset/poses/10.txt 1172
+Time diff avg (fut): 1.97235
+Assumes homogenous-matrix from
+Len dataset: 18305
+Overfitting: True
+file name & length /scratch-shared/lbecker/dataset/poses/00.txt 4512
+file name & length /scratch-shared/lbecker/dataset/poses/01.txt 1072
+file name & length /scratch-shared/lbecker/dataset/poses/02.txt 4632
+file name & length /scratch-shared/lbecker/dataset/poses/03.txt 772
+file name & length /scratch-shared/lbecker/dataset/poses/04.txt 242
+file name & length /scratch-shared/lbecker/dataset/poses/05.txt 2732
+file name & length /scratch-shared/lbecker/dataset/poses/06.txt 1072
+file name & length /scratch-shared/lbecker/dataset/poses/07.txt 1072
+file name & length /scratch-shared/lbecker/dataset/poses/08.txt 4042
+file name & length /scratch-shared/lbecker/dataset/poses/09.txt 1562
+file name & length /scratch-shared/lbecker/dataset/poses/10.txt 1172
+Time diff avg (fut): 1.97235
+Assumes homogenous-matrix from
+Len dataset: 2288
+[INFO] Now using random trajectory shuffling.
+
+
+[INFO] KITTI dataset - skip subtracting mean from absolute positions.
+[INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)
+
+[Core Denoising Model] Trainable/Total: 6584760/6584760
+[Initialization Model] Trainable/Total: 8144013/8144013
+[2025-06-20 17:59:57] Epoch: 1		Loss: 41.368071	Loss Translation.: 0.692527	Loss Rotation.: 0.071128	Combined Loss Dist.: 38.182757	Loss Uncertainty: 3.185314
+--ADE (5 time steps): 0.1999	--FDE (5 time steps): 0.2279
+--ADE (10 time steps): 0.3154	--FDE (10 time steps): 0.4706
+--ADE (15 time steps): 0.4673	--FDE (15 time steps): 0.8359
+--ADE (20 time steps): 0.7850	--FDE (20 time steps): 1.7651
+--ATE translation: 1.1413
+[2025-06-20 18:00:56] Epoch: 2		Loss: 23.447607	Loss Translation.: 0.364501	Loss Rotation.: 0.055943	Combined Loss Dist.: 21.022197	Loss Uncertainty: 2.425410
+--ADE (5 time steps): 0.1623	--FDE (5 time steps): 0.1695
+--ADE (10 time steps): 0.2554	--FDE (10 time steps): 0.4029
+--ADE (15 time steps): 0.3862	--FDE (15 time steps): 0.6796
+--ADE (20 time steps): 0.6873	--FDE (20 time steps): 1.5617
+--ATE translation: 1.0601
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_2.pth
+[2025-06-20 18:01:54] Epoch: 3		Loss: 19.780249	Loss Translation.: 0.306127	Loss Rotation.: 0.047659	Combined Loss Dist.: 17.689294	Loss Uncertainty: 2.090955
+--ADE (5 time steps): 0.1343	--FDE (5 time steps): 0.1400
+--ADE (10 time steps): 0.2094	--FDE (10 time steps): 0.3174
+--ADE (15 time steps): 0.3178	--FDE (15 time steps): 0.5699
+--ADE (20 time steps): 0.5359	--FDE (20 time steps): 1.5180
+--ATE translation: 0.7763
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_3.pth
+[2025-06-20 18:02:53] Epoch: 4		Loss: 17.355468	Loss Translation.: 0.270650	Loss Rotation.: 0.038277	Combined Loss Dist.: 15.446350	Loss Uncertainty: 1.909118
+--ADE (5 time steps): 0.1615	--FDE (5 time steps): 0.1665
+--ADE (10 time steps): 0.2390	--FDE (10 time steps): 0.3779
+--ADE (15 time steps): 0.3581	--FDE (15 time steps): 0.6285
+--ADE (20 time steps): 0.5692	--FDE (20 time steps): 1.7577
+--ATE translation: 0.7721
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_4.pth
+[2025-06-20 18:03:52] Epoch: 5		Loss: 16.145358	Loss Translation.: 0.252382	Loss Rotation.: 0.033678	Combined Loss Dist.: 14.302992	Loss Uncertainty: 1.842366
+--ADE (5 time steps): 0.1060	--FDE (5 time steps): 0.1220
+--ADE (10 time steps): 0.1762	--FDE (10 time steps): 0.2629
+--ADE (15 time steps): 0.2838	--FDE (15 time steps): 0.4837
+--ADE (20 time steps): 0.4671	--FDE (20 time steps): 1.6718
+--ATE translation: 0.6646
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_5.pth
+[2025-06-20 18:04:51] Epoch: 6		Loss: 14.771687	Loss Translation.: 0.229749	Loss Rotation.: 0.029469	Combined Loss Dist.: 12.960884	Loss Uncertainty: 1.810804
+--ADE (5 time steps): 0.1752	--FDE (5 time steps): 0.2177
+--ADE (10 time steps): 0.2848	--FDE (10 time steps): 0.4537
+--ADE (15 time steps): 0.4121	--FDE (15 time steps): 0.6993
+--ADE (20 time steps): 0.6667	--FDE (20 time steps): 2.3798
+--ATE translation: 0.9651
+[2025-06-20 18:05:50] Epoch: 7		Loss: 14.315523	Loss Translation.: 0.222302	Loss Rotation.: 0.027553	Combined Loss Dist.: 12.492751	Loss Uncertainty: 1.822772
+--ADE (5 time steps): 0.0971	--FDE (5 time steps): 0.1071
+--ADE (10 time steps): 0.1579	--FDE (10 time steps): 0.2476
+--ADE (15 time steps): 0.2508	--FDE (15 time steps): 0.4549
+--ADE (20 time steps): 0.4312	--FDE (20 time steps): 1.8254
+--ATE translation: 0.6411
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_7.pth
+[2025-06-20 18:06:48] Epoch: 8		Loss: 13.188802	Loss Translation.: 0.203109	Loss Rotation.: 0.025502	Combined Loss Dist.: 11.430527	Loss Uncertainty: 1.758276
+--ADE (5 time steps): 0.0893	--FDE (5 time steps): 0.0998
+--ADE (10 time steps): 0.1476	--FDE (10 time steps): 0.2309
+--ADE (15 time steps): 0.2303	--FDE (15 time steps): 0.4033
+--ADE (20 time steps): 0.3994	--FDE (20 time steps): 1.7902
+--ATE translation: 0.5921
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_8.pth
+[2025-06-20 18:07:47] Epoch: 9		Loss: 10.653028	Loss Translation.: 0.158788	Loss Rotation.: 0.022020	Combined Loss Dist.: 9.040371	Loss Uncertainty: 1.612657
+--ADE (5 time steps): 0.0731	--FDE (5 time steps): 0.0896
+--ADE (10 time steps): 0.1183	--FDE (10 time steps): 0.1944
+--ADE (15 time steps): 0.1868	--FDE (15 time steps): 0.3490
+--ADE (20 time steps): 0.3359	--FDE (20 time steps): 1.3850
+--ATE translation: 0.5094
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_9.pth
+[2025-06-20 18:08:46] Epoch: 10		Loss: 10.216552	Loss Translation.: 0.152586	Loss Rotation.: 0.020405	Combined Loss Dist.: 8.649529	Loss Uncertainty: 1.567022
+--ADE (5 time steps): 0.0678	--FDE (5 time steps): 0.0687
+--ADE (10 time steps): 0.1159	--FDE (10 time steps): 0.1909
+--ADE (15 time steps): 0.1914	--FDE (15 time steps): 0.3729
+--ADE (20 time steps): 0.3518	--FDE (20 time steps): 1.5910
+--ATE translation: 0.5433
+[2025-06-20 18:09:44] Epoch: 11		Loss: 9.810511	Loss Translation.: 0.146344	Loss Rotation.: 0.019257	Combined Loss Dist.: 8.280044	Loss Uncertainty: 1.530467
+--ADE (5 time steps): 0.0794	--FDE (5 time steps): 0.1096
+--ADE (10 time steps): 0.1346	--FDE (10 time steps): 0.2239
+--ADE (15 time steps): 0.2127	--FDE (15 time steps): 0.3902
+--ADE (20 time steps): 0.3655	--FDE (20 time steps): 1.5255
+--ATE translation: 0.5356
+[2025-06-20 18:10:43] Epoch: 12		Loss: 9.778354	Loss Translation.: 0.146502	Loss Rotation.: 0.018727	Combined Loss Dist.: 8.261442	Loss Uncertainty: 1.516913
+--ADE (5 time steps): 0.0748	--FDE (5 time steps): 0.0896
+--ADE (10 time steps): 0.1187	--FDE (10 time steps): 0.1779
+--ADE (15 time steps): 0.1871	--FDE (15 time steps): 0.3277
+--ADE (20 time steps): 0.3239	--FDE (20 time steps): 1.4168
+--ATE translation: 0.4784
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_12.pth
+[2025-06-20 18:11:42] Epoch: 13		Loss: 9.656502	Loss Translation.: 0.145076	Loss Rotation.: 0.018081	Combined Loss Dist.: 8.157803	Loss Uncertainty: 1.498698
+--ADE (5 time steps): 0.0551	--FDE (5 time steps): 0.0728
+--ADE (10 time steps): 0.1036	--FDE (10 time steps): 0.1771
+--ADE (15 time steps): 0.1701	--FDE (15 time steps): 0.3359
+--ADE (20 time steps): 0.3141	--FDE (20 time steps): 1.6480
+--ATE translation: 0.4900
+[2025-06-20 18:12:41] Epoch: 14		Loss: 9.264535	Loss Translation.: 0.138250	Loss Rotation.: 0.017758	Combined Loss Dist.: 7.800395	Loss Uncertainty: 1.464140
+--ADE (5 time steps): 0.0554	--FDE (5 time steps): 0.0604
+--ADE (10 time steps): 0.0952	--FDE (10 time steps): 0.1576
+--ADE (15 time steps): 0.1579	--FDE (15 time steps): 0.3000
+--ADE (20 time steps): 0.2883	--FDE (20 time steps): 1.4424
+--ATE translation: 0.4402
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_14.pth
+[2025-06-20 18:13:40] Epoch: 15		Loss: 9.141377	Loss Translation.: 0.136334	Loss Rotation.: 0.017359	Combined Loss Dist.: 7.684690	Loss Uncertainty: 1.456686
+--ADE (5 time steps): 0.0538	--FDE (5 time steps): 0.0675
+--ADE (10 time steps): 0.1019	--FDE (10 time steps): 0.1550
+--ADE (15 time steps): 0.1592	--FDE (15 time steps): 0.2970
+--ADE (20 time steps): 0.2876	--FDE (20 time steps): 1.3892
+--ATE translation: 0.4314
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_15.pth
+[2025-06-20 18:14:38] Epoch: 16		Loss: 8.996534	Loss Translation.: 0.134033	Loss Rotation.: 0.016974	Combined Loss Dist.: 7.550334	Loss Uncertainty: 1.446200
+--ADE (5 time steps): 0.0556	--FDE (5 time steps): 0.0682
+--ADE (10 time steps): 0.0961	--FDE (10 time steps): 0.1505
+--ADE (15 time steps): 0.1616	--FDE (15 time steps): 0.3092
+--ADE (20 time steps): 0.2999	--FDE (20 time steps): 1.5409
+--ATE translation: 0.4619
+[2025-06-20 18:15:37] Epoch: 17		Loss: 7.962982	Loss Translation.: 0.116332	Loss Rotation.: 0.015430	Combined Loss Dist.: 6.588080	Loss Uncertainty: 1.374902
+--ADE (5 time steps): 0.0450	--FDE (5 time steps): 0.0548
+--ADE (10 time steps): 0.0816	--FDE (10 time steps): 0.1373
+--ADE (15 time steps): 0.1340	--FDE (15 time steps): 0.2621
+--ADE (20 time steps): 0.2513	--FDE (20 time steps): 1.2661
+--ATE translation: 0.3893
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_17.pth
+[2025-06-20 18:16:36] Epoch: 18		Loss: 7.739920	Loss Translation.: 0.112720	Loss Rotation.: 0.015152	Combined Loss Dist.: 6.393591	Loss Uncertainty: 1.346328
+--ADE (5 time steps): 0.0436	--FDE (5 time steps): 0.0562
+--ADE (10 time steps): 0.0775	--FDE (10 time steps): 0.1341
+--ADE (15 time steps): 0.1310	--FDE (15 time steps): 0.2714
+--ADE (20 time steps): 0.2525	--FDE (20 time steps): 1.3368
+--ATE translation: 0.3984
+[2025-06-20 18:17:35] Epoch: 19		Loss: 7.570134	Loss Translation.: 0.109776	Loss Rotation.: 0.015043	Combined Loss Dist.: 6.240925	Loss Uncertainty: 1.329209
+--ADE (5 time steps): 0.0436	--FDE (5 time steps): 0.0547
+--ADE (10 time steps): 0.0786	--FDE (10 time steps): 0.1357
+--ADE (15 time steps): 0.1325	--FDE (15 time steps): 0.2670
+--ADE (20 time steps): 0.2525	--FDE (20 time steps): 1.3195
+--ATE translation: 0.3960
+[2025-06-20 18:18:33] Epoch: 20		Loss: 7.628424	Loss Translation.: 0.111218	Loss Rotation.: 0.014743	Combined Loss Dist.: 6.298029	Loss Uncertainty: 1.330395
+--ADE (5 time steps): 0.0429	--FDE (5 time steps): 0.0549
+--ADE (10 time steps): 0.0772	--FDE (10 time steps): 0.1312
+--ADE (15 time steps): 0.1325	--FDE (15 time steps): 0.2638
+--ADE (20 time steps): 0.2500	--FDE (20 time steps): 1.2649
+--ATE translation: 0.3892
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_20.pth
+[2025-06-20 18:19:32] Epoch: 21		Loss: 7.417005	Loss Translation.: 0.107533	Loss Rotation.: 0.014628	Combined Loss Dist.: 6.108027	Loss Uncertainty: 1.308978
+--ADE (5 time steps): 0.0385	--FDE (5 time steps): 0.0519
+--ADE (10 time steps): 0.0739	--FDE (10 time steps): 0.1362
+--ADE (15 time steps): 0.1305	--FDE (15 time steps): 0.2769
+--ADE (20 time steps): 0.2538	--FDE (20 time steps): 1.3577
+--ATE translation: 0.4035
+[2025-06-20 18:20:31] Epoch: 22		Loss: 7.440493	Loss Translation.: 0.108270	Loss Rotation.: 0.014490	Combined Loss Dist.: 6.137992	Loss Uncertainty: 1.302501
+--ADE (5 time steps): 0.0413	--FDE (5 time steps): 0.0540
+--ADE (10 time steps): 0.0786	--FDE (10 time steps): 0.1376
+--ADE (15 time steps): 0.1322	--FDE (15 time steps): 0.2574
+--ADE (20 time steps): 0.2512	--FDE (20 time steps): 1.3034
+--ATE translation: 0.3944
+[2025-06-20 18:21:30] Epoch: 23		Loss: 7.470992	Loss Translation.: 0.109079	Loss Rotation.: 0.014293	Combined Loss Dist.: 6.168600	Loss Uncertainty: 1.302392
+--ADE (5 time steps): 0.0396	--FDE (5 time steps): 0.0573
+--ADE (10 time steps): 0.0762	--FDE (10 time steps): 0.1356
+--ADE (15 time steps): 0.1323	--FDE (15 time steps): 0.2667
+--ADE (20 time steps): 0.2501	--FDE (20 time steps): 1.2880
+--ATE translation: 0.3893
+[2025-06-20 18:22:28] Epoch: 24		Loss: 7.310685	Loss Translation.: 0.106338	Loss Rotation.: 0.014096	Combined Loss Dist.: 6.021710	Loss Uncertainty: 1.288975
+--ADE (5 time steps): 0.0394	--FDE (5 time steps): 0.0514
+--ADE (10 time steps): 0.0723	--FDE (10 time steps): 0.1231
+--ADE (15 time steps): 0.1212	--FDE (15 time steps): 0.2482
+--ADE (20 time steps): 0.2369	--FDE (20 time steps): 1.2539
+--ATE translation: 0.3768
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_24.pth
+[2025-06-20 18:23:27] Epoch: 25		Loss: 6.726535	Loss Translation.: 0.096277	Loss Rotation.: 0.013226	Combined Loss Dist.: 5.475142	Loss Uncertainty: 1.251392
+--ADE (5 time steps): 0.0342	--FDE (5 time steps): 0.0478
+--ADE (10 time steps): 0.0678	--FDE (10 time steps): 0.1226
+--ADE (15 time steps): 0.1175	--FDE (15 time steps): 0.2390
+--ADE (20 time steps): 0.2293	--FDE (20 time steps): 1.2254
+--ATE translation: 0.3661
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_25.pth
+[2025-06-20 18:24:26] Epoch: 26		Loss: 6.591208	Loss Translation.: 0.094115	Loss Rotation.: 0.013000	Combined Loss Dist.: 5.355738	Loss Uncertainty: 1.235471
+--ADE (5 time steps): 0.0334	--FDE (5 time steps): 0.0442
+--ADE (10 time steps): 0.0657	--FDE (10 time steps): 0.1225
+--ADE (15 time steps): 0.1144	--FDE (15 time steps): 0.2378
+--ADE (20 time steps): 0.2247	--FDE (20 time steps): 1.2155
+--ATE translation: 0.3613
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_26.pth
+[2025-06-20 18:25:25] Epoch: 27		Loss: 6.502179	Loss Translation.: 0.092692	Loss Rotation.: 0.012875	Combined Loss Dist.: 5.278348	Loss Uncertainty: 1.223831
+--ADE (5 time steps): 0.0334	--FDE (5 time steps): 0.0449
+--ADE (10 time steps): 0.0655	--FDE (10 time steps): 0.1182
+--ADE (15 time steps): 0.1134	--FDE (15 time steps): 0.2374
+--ADE (20 time steps): 0.2233	--FDE (20 time steps): 1.1938
+--ATE translation: 0.3579
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_27.pth
+[2025-06-20 18:26:23] Epoch: 28		Loss: 6.444283	Loss Translation.: 0.091742	Loss Rotation.: 0.012760	Combined Loss Dist.: 5.225093	Loss Uncertainty: 1.219190
+--ADE (5 time steps): 0.0362	--FDE (5 time steps): 0.0485
+--ADE (10 time steps): 0.0683	--FDE (10 time steps): 0.1243
+--ADE (15 time steps): 0.1176	--FDE (15 time steps): 0.2435
+--ADE (20 time steps): 0.2307	--FDE (20 time steps): 1.2527
+--ATE translation: 0.3708
+[2025-06-20 18:27:22] Epoch: 29		Loss: 6.380492	Loss Translation.: 0.090727	Loss Rotation.: 0.012605	Combined Loss Dist.: 5.166599	Loss Uncertainty: 1.213894
+--ADE (5 time steps): 0.0331	--FDE (5 time steps): 0.0444
+--ADE (10 time steps): 0.0642	--FDE (10 time steps): 0.1158
+--ADE (15 time steps): 0.1108	--FDE (15 time steps): 0.2272
+--ADE (20 time steps): 0.2174	--FDE (20 time steps): 1.1802
+--ATE translation: 0.3496
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_29.pth
+[2025-06-20 18:28:21] Epoch: 30		Loss: 6.313357	Loss Translation.: 0.089652	Loss Rotation.: 0.012504	Combined Loss Dist.: 5.107836	Loss Uncertainty: 1.205522
+--ADE (5 time steps): 0.0325	--FDE (5 time steps): 0.0443
+--ADE (10 time steps): 0.0632	--FDE (10 time steps): 0.1165
+--ADE (15 time steps): 0.1106	--FDE (15 time steps): 0.2348
+--ADE (20 time steps): 0.2177	--FDE (20 time steps): 1.1785
+--ATE translation: 0.3503
+[2025-06-20 18:29:20] Epoch: 31		Loss: 6.295850	Loss Translation.: 0.089505	Loss Rotation.: 0.012357	Combined Loss Dist.: 5.093109	Loss Uncertainty: 1.202741
+--ADE (5 time steps): 0.0319	--FDE (5 time steps): 0.0436
+--ADE (10 time steps): 0.0617	--FDE (10 time steps): 0.1119
+--ADE (15 time steps): 0.1073	--FDE (15 time steps): 0.2249
+--ADE (20 time steps): 0.2137	--FDE (20 time steps): 1.1700
+--ATE translation: 0.3472
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_31.pth
+[2025-06-20 18:30:19] Epoch: 32		Loss: 6.228212	Loss Translation.: 0.088323	Loss Rotation.: 0.012273	Combined Loss Dist.: 5.029822	Loss Uncertainty: 1.198389
+--ADE (5 time steps): 0.0321	--FDE (5 time steps): 0.0438
+--ADE (10 time steps): 0.0619	--FDE (10 time steps): 0.1121
+--ADE (15 time steps): 0.1079	--FDE (15 time steps): 0.2265
+--ADE (20 time steps): 0.2140	--FDE (20 time steps): 1.1776
+--ATE translation: 0.3480
+[2025-06-20 18:31:18] Epoch: 33		Loss: 5.930476	Loss Translation.: 0.083276	Loss Rotation.: 0.011709	Combined Loss Dist.: 4.749266	Loss Uncertainty: 1.181210
+--ADE (5 time steps): 0.0290	--FDE (5 time steps): 0.0403
+--ADE (10 time steps): 0.0581	--FDE (10 time steps): 0.1074
+--ADE (15 time steps): 0.1021	--FDE (15 time steps): 0.2171
+--ADE (20 time steps): 0.2055	--FDE (20 time steps): 1.1486
+--ATE translation: 0.3370
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_33.pth
+[2025-06-20 18:32:17] Epoch: 34		Loss: 5.852979	Loss Translation.: 0.082000	Loss Rotation.: 0.011585	Combined Loss Dist.: 4.679274	Loss Uncertainty: 1.173705
+--ADE (5 time steps): 0.0297	--FDE (5 time steps): 0.0405
+--ADE (10 time steps): 0.0584	--FDE (10 time steps): 0.1076
+--ADE (15 time steps): 0.1020	--FDE (15 time steps): 0.2138
+--ADE (20 time steps): 0.2038	--FDE (20 time steps): 1.1375
+--ATE translation: 0.3337
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_34.pth
+[2025-06-20 18:33:15] Epoch: 35		Loss: 5.800678	Loss Translation.: 0.081118	Loss Rotation.: 0.011516	Combined Loss Dist.: 4.631660	Loss Uncertainty: 1.169018
+--ADE (5 time steps): 0.0299	--FDE (5 time steps): 0.0415
+--ADE (10 time steps): 0.0585	--FDE (10 time steps): 0.1069
+--ADE (15 time steps): 0.1022	--FDE (15 time steps): 0.2152
+--ADE (20 time steps): 0.2050	--FDE (20 time steps): 1.1409
+--ATE translation: 0.3359
+[2025-06-20 18:34:14] Epoch: 36		Loss: 5.725249	Loss Translation.: 0.079790	Loss Rotation.: 0.011417	Combined Loss Dist.: 4.560327	Loss Uncertainty: 1.164922
+--ADE (5 time steps): 0.0291	--FDE (5 time steps): 0.0403
+--ADE (10 time steps): 0.0575	--FDE (10 time steps): 0.1063
+--ADE (15 time steps): 0.1011	--FDE (15 time steps): 0.2142
+--ADE (20 time steps): 0.2035	--FDE (20 time steps): 1.1410
+--ATE translation: 0.3342
+[2025-06-20 18:35:13] Epoch: 37		Loss: 5.682565	Loss Translation.: 0.079081	Loss Rotation.: 0.011343	Combined Loss Dist.: 4.521186	Loss Uncertainty: 1.161378
+--ADE (5 time steps): 0.0297	--FDE (5 time steps): 0.0418
+--ADE (10 time steps): 0.0588	--FDE (10 time steps): 0.1074
+--ADE (15 time steps): 0.1018	--FDE (15 time steps): 0.2130
+--ADE (20 time steps): 0.2030	--FDE (20 time steps): 1.1302
+--ATE translation: 0.3317
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_37.pth
+[2025-06-20 18:36:12] Epoch: 38		Loss: 5.647542	Loss Translation.: 0.078528	Loss Rotation.: 0.011259	Combined Loss Dist.: 4.489346	Loss Uncertainty: 1.158196
+--ADE (5 time steps): 0.0285	--FDE (5 time steps): 0.0397
+--ADE (10 time steps): 0.0562	--FDE (10 time steps): 0.1027
+--ADE (15 time steps): 0.0979	--FDE (15 time steps): 0.2074
+--ADE (20 time steps): 0.1986	--FDE (20 time steps): 1.1212
+--ATE translation: 0.3273
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_38.pth
+[2025-06-20 18:37:10] Epoch: 39		Loss: 5.584135	Loss Translation.: 0.077383	Loss Rotation.: 0.011207	Combined Loss Dist.: 4.429479	Loss Uncertainty: 1.154656
+--ADE (5 time steps): 0.0285	--FDE (5 time steps): 0.0398
+--ADE (10 time steps): 0.0567	--FDE (10 time steps): 0.1049
+--ADE (15 time steps): 0.0997	--FDE (15 time steps): 0.2111
+--ADE (20 time steps): 0.2012	--FDE (20 time steps): 1.1251
+--ATE translation: 0.3305
+[2025-06-20 18:38:09] Epoch: 40		Loss: 5.537948	Loss Translation.: 0.076607	Loss Rotation.: 0.011130	Combined Loss Dist.: 4.386820	Loss Uncertainty: 1.151128
+--ADE (5 time steps): 0.0288	--FDE (5 time steps): 0.0400
+--ADE (10 time steps): 0.0571	--FDE (10 time steps): 0.1057
+--ADE (15 time steps): 0.1004	--FDE (15 time steps): 0.2119
+--ADE (20 time steps): 0.2016	--FDE (20 time steps): 1.1310
+--ATE translation: 0.3314
+[2025-06-20 18:39:08] Epoch: 41		Loss: 5.430374	Loss Translation.: 0.074852	Loss Rotation.: 0.010852	Combined Loss Dist.: 4.285220	Loss Uncertainty: 1.145155
+--ADE (5 time steps): 0.0274	--FDE (5 time steps): 0.0382
+--ADE (10 time steps): 0.0549	--FDE (10 time steps): 0.1015
+--ADE (15 time steps): 0.0963	--FDE (15 time steps): 0.2045
+--ADE (20 time steps): 0.1963	--FDE (20 time steps): 1.1140
+--ATE translation: 0.3248
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_41.pth
+[2025-06-20 18:40:07] Epoch: 42		Loss: 5.372053	Loss Translation.: 0.073837	Loss Rotation.: 0.010766	Combined Loss Dist.: 4.230150	Loss Uncertainty: 1.141902
+--ADE (5 time steps): 0.0277	--FDE (5 time steps): 0.0388
+--ADE (10 time steps): 0.0555	--FDE (10 time steps): 0.1027
+--ADE (15 time steps): 0.0977	--FDE (15 time steps): 0.2069
+--ADE (20 time steps): 0.1976	--FDE (20 time steps): 1.1185
+--ATE translation: 0.3261
+[2025-06-20 18:41:05] Epoch: 43		Loss: 5.337447	Loss Translation.: 0.073243	Loss Rotation.: 0.010714	Combined Loss Dist.: 4.197845	Loss Uncertainty: 1.139602
+--ADE (5 time steps): 0.0280	--FDE (5 time steps): 0.0391
+--ADE (10 time steps): 0.0559	--FDE (10 time steps): 0.1023
+--ADE (15 time steps): 0.0973	--FDE (15 time steps): 0.2038
+--ADE (20 time steps): 0.1964	--FDE (20 time steps): 1.1145
+--ATE translation: 0.3246
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_43.pth
+[2025-06-20 18:42:04] Epoch: 44		Loss: 5.328544	Loss Translation.: 0.073137	Loss Rotation.: 0.010659	Combined Loss Dist.: 4.189789	Loss Uncertainty: 1.138755
+--ADE (5 time steps): 0.0275	--FDE (5 time steps): 0.0385
+--ADE (10 time steps): 0.0548	--FDE (10 time steps): 0.1008
+--ADE (15 time steps): 0.0956	--FDE (15 time steps): 0.2019
+--ADE (20 time steps): 0.1944	--FDE (20 time steps): 1.1093
+--ATE translation: 0.3229
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_44.pth
+[2025-06-20 18:43:03] Epoch: 45		Loss: 5.286252	Loss Translation.: 0.072361	Loss Rotation.: 0.010622	Combined Loss Dist.: 4.149127	Loss Uncertainty: 1.137125
+--ADE (5 time steps): 0.0279	--FDE (5 time steps): 0.0385
+--ADE (10 time steps): 0.0552	--FDE (10 time steps): 0.1008
+--ADE (15 time steps): 0.0962	--FDE (15 time steps): 0.2026
+--ADE (20 time steps): 0.1951	--FDE (20 time steps): 1.1136
+--ATE translation: 0.3236
+[2025-06-20 18:44:02] Epoch: 46		Loss: 5.267460	Loss Translation.: 0.072071	Loss Rotation.: 0.010577	Combined Loss Dist.: 4.132397	Loss Uncertainty: 1.135063
+--ADE (5 time steps): 0.0282	--FDE (5 time steps): 0.0390
+--ADE (10 time steps): 0.0554	--FDE (10 time steps): 0.1013
+--ADE (15 time steps): 0.0963	--FDE (15 time steps): 0.2025
+--ADE (20 time steps): 0.1946	--FDE (20 time steps): 1.1092
+--ATE translation: 0.3224
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_46.pth
+[2025-06-20 18:45:01] Epoch: 47		Loss: 5.239312	Loss Translation.: 0.071578	Loss Rotation.: 0.010551	Combined Loss Dist.: 4.106450	Loss Uncertainty: 1.132862
+--ADE (5 time steps): 0.0280	--FDE (5 time steps): 0.0388
+--ADE (10 time steps): 0.0553	--FDE (10 time steps): 0.1008
+--ADE (15 time steps): 0.0960	--FDE (15 time steps): 0.2015
+--ADE (20 time steps): 0.1943	--FDE (20 time steps): 1.1095
+--ATE translation: 0.3221
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_47.pth
+[2025-06-20 18:46:00] Epoch: 48		Loss: 5.216144	Loss Translation.: 0.071160	Loss Rotation.: 0.010510	Combined Loss Dist.: 4.083502	Loss Uncertainty: 1.132642
+--ADE (5 time steps): 0.0280	--FDE (5 time steps): 0.0386
+--ADE (10 time steps): 0.0552	--FDE (10 time steps): 0.1001
+--ADE (15 time steps): 0.0956	--FDE (15 time steps): 0.1999
+--ADE (20 time steps): 0.1933	--FDE (20 time steps): 1.1056
+--ATE translation: 0.3208
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_48.pth
+[2025-06-20 18:46:59] Epoch: 49		Loss: 5.145503	Loss Translation.: 0.069931	Loss Rotation.: 0.010402	Combined Loss Dist.: 4.016624	Loss Uncertainty: 1.128879
+--ADE (5 time steps): 0.0275	--FDE (5 time steps): 0.0384
+--ADE (10 time steps): 0.0548	--FDE (10 time steps): 0.1011
+--ADE (15 time steps): 0.0958	--FDE (15 time steps): 0.2025
+--ADE (20 time steps): 0.1941	--FDE (20 time steps): 1.1108
+--ATE translation: 0.3226
+[2025-06-20 18:47:57] Epoch: 50		Loss: 5.111721	Loss Translation.: 0.069324	Loss Rotation.: 0.010356	Combined Loss Dist.: 3.984000	Loss Uncertainty: 1.127721
+--ADE (5 time steps): 0.0274	--FDE (5 time steps): 0.0382
+--ADE (10 time steps): 0.0546	--FDE (10 time steps): 0.1007
+--ADE (15 time steps): 0.0953	--FDE (15 time steps): 0.2012
+--ADE (20 time steps): 0.1934	--FDE (20 time steps): 1.1074
+--ATE translation: 0.3216
+[2025-06-20 18:48:56] Epoch: 51		Loss: 5.090821	Loss Translation.: 0.068955	Loss Rotation.: 0.010331	Combined Loss Dist.: 3.964265	Loss Uncertainty: 1.126557
+--ADE (5 time steps): 0.0277	--FDE (5 time steps): 0.0384
+--ADE (10 time steps): 0.0550	--FDE (10 time steps): 0.1007
+--ADE (15 time steps): 0.0956	--FDE (15 time steps): 0.2010
+--ADE (20 time steps): 0.1935	--FDE (20 time steps): 1.1059
+--ATE translation: 0.3214
+[2025-06-20 18:49:55] Epoch: 52		Loss: 5.073937	Loss Translation.: 0.068651	Loss Rotation.: 0.010310	Combined Loss Dist.: 3.948047	Loss Uncertainty: 1.125890
+--ADE (5 time steps): 0.0278	--FDE (5 time steps): 0.0387
+--ADE (10 time steps): 0.0551	--FDE (10 time steps): 0.1006
+--ADE (15 time steps): 0.0955	--FDE (15 time steps): 0.2006
+--ADE (20 time steps): 0.1934	--FDE (20 time steps): 1.1070
+--ATE translation: 0.3212
+[2025-06-20 18:50:53] Epoch: 53		Loss: 5.067462	Loss Translation.: 0.068552	Loss Rotation.: 0.010285	Combined Loss Dist.: 3.941846	Loss Uncertainty: 1.125617
+--ADE (5 time steps): 0.0271	--FDE (5 time steps): 0.0379
+--ADE (10 time steps): 0.0543	--FDE (10 time steps): 0.1001
+--ADE (15 time steps): 0.0946	--FDE (15 time steps): 0.1997
+--ADE (20 time steps): 0.1923	--FDE (20 time steps): 1.1053
+--ATE translation: 0.3205
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_53.pth
+[2025-06-20 18:51:52] Epoch: 54		Loss: 5.040135	Loss Translation.: 0.068046	Loss Rotation.: 0.010267	Combined Loss Dist.: 3.915612	Loss Uncertainty: 1.124523
+--ADE (5 time steps): 0.0269	--FDE (5 time steps): 0.0376
+--ADE (10 time steps): 0.0540	--FDE (10 time steps): 0.0997
+--ADE (15 time steps): 0.0943	--FDE (15 time steps): 0.1991
+--ADE (20 time steps): 0.1920	--FDE (20 time steps): 1.1047
+--ATE translation: 0.3202
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_54.pth
+[2025-06-20 18:52:51] Epoch: 55		Loss: 5.024913	Loss Translation.: 0.067776	Loss Rotation.: 0.010243	Combined Loss Dist.: 3.900997	Loss Uncertainty: 1.123916
+--ADE (5 time steps): 0.0269	--FDE (5 time steps): 0.0377
+--ADE (10 time steps): 0.0541	--FDE (10 time steps): 0.0999
+--ADE (15 time steps): 0.0945	--FDE (15 time steps): 0.1992
+--ADE (20 time steps): 0.1921	--FDE (20 time steps): 1.1048
+--ATE translation: 0.3202
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_55.pth
+[2025-06-20 18:53:50] Epoch: 56		Loss: 5.008716	Loss Translation.: 0.067484	Loss Rotation.: 0.010229	Combined Loss Dist.: 3.885685	Loss Uncertainty: 1.123031
+--ADE (5 time steps): 0.0268	--FDE (5 time steps): 0.0375
+--ADE (10 time steps): 0.0538	--FDE (10 time steps): 0.0995
+--ADE (15 time steps): 0.0939	--FDE (15 time steps): 0.1984
+--ADE (20 time steps): 0.1915	--FDE (20 time steps): 1.1045
+--ATE translation: 0.3200
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_56.pth
+[2025-06-20 18:54:49] Epoch: 57		Loss: 4.990507	Loss Translation.: 0.067226	Loss Rotation.: 0.010151	Combined Loss Dist.: 3.868868	Loss Uncertainty: 1.121639
+--ADE (5 time steps): 0.0267	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0535	--FDE (10 time steps): 0.0986
+--ADE (15 time steps): 0.0934	--FDE (15 time steps): 0.1968
+--ADE (20 time steps): 0.1905	--FDE (20 time steps): 1.1001
+--ATE translation: 0.3185
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_57.pth
+[2025-06-20 18:55:48] Epoch: 58		Loss: 4.979374	Loss Translation.: 0.067036	Loss Rotation.: 0.010129	Combined Loss Dist.: 3.858263	Loss Uncertainty: 1.121111
+--ADE (5 time steps): 0.0267	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0535	--FDE (10 time steps): 0.0985
+--ADE (15 time steps): 0.0932	--FDE (15 time steps): 0.1966
+--ADE (20 time steps): 0.1903	--FDE (20 time steps): 1.0995
+--ATE translation: 0.3183
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_58.pth
+[2025-06-20 18:56:47] Epoch: 59		Loss: 4.965512	Loss Translation.: 0.066781	Loss Rotation.: 0.010119	Combined Loss Dist.: 3.844996	Loss Uncertainty: 1.120516
+--ADE (5 time steps): 0.0268	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0535	--FDE (10 time steps): 0.0986
+--ADE (15 time steps): 0.0933	--FDE (15 time steps): 0.1968
+--ADE (20 time steps): 0.1904	--FDE (20 time steps): 1.0996
+--ATE translation: 0.3184
+[2025-06-20 18:57:46] Epoch: 60		Loss: 4.952244	Loss Translation.: 0.066536	Loss Rotation.: 0.010108	Combined Loss Dist.: 3.832217	Loss Uncertainty: 1.120026
+--ADE (5 time steps): 0.0267	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0535	--FDE (10 time steps): 0.0985
+--ADE (15 time steps): 0.0932	--FDE (15 time steps): 0.1966
+--ADE (20 time steps): 0.1903	--FDE (20 time steps): 1.0992
+--ATE translation: 0.3183
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_60.pth
+[2025-06-20 18:58:44] Epoch: 61		Loss: 4.946116	Loss Translation.: 0.066430	Loss Rotation.: 0.010100	Combined Loss Dist.: 3.826501	Loss Uncertainty: 1.119615
+--ADE (5 time steps): 0.0267	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0533	--FDE (10 time steps): 0.0984
+--ADE (15 time steps): 0.0930	--FDE (15 time steps): 0.1963
+--ADE (20 time steps): 0.1899	--FDE (20 time steps): 1.0985
+--ATE translation: 0.3178
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_61.pth
+[2025-06-20 18:59:43] Epoch: 62		Loss: 4.932606	Loss Translation.: 0.066181	Loss Rotation.: 0.010089	Combined Loss Dist.: 3.813502	Loss Uncertainty: 1.119104
+--ADE (5 time steps): 0.0267	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0533	--FDE (10 time steps): 0.0984
+--ADE (15 time steps): 0.0929	--FDE (15 time steps): 0.1962
+--ADE (20 time steps): 0.1898	--FDE (20 time steps): 1.0981
+--ATE translation: 0.3177
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_62.pth
+[2025-06-20 19:00:42] Epoch: 63		Loss: 4.921725	Loss Translation.: 0.065980	Loss Rotation.: 0.010079	Combined Loss Dist.: 3.802985	Loss Uncertainty: 1.118740
+--ADE (5 time steps): 0.0267	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0534	--FDE (10 time steps): 0.0985
+--ADE (15 time steps): 0.0931	--FDE (15 time steps): 0.1964
+--ADE (20 time steps): 0.1901	--FDE (20 time steps): 1.0983
+--ATE translation: 0.3180
+[2025-06-20 19:01:41] Epoch: 64		Loss: 4.912732	Loss Translation.: 0.065817	Loss Rotation.: 0.010072	Combined Loss Dist.: 3.794428	Loss Uncertainty: 1.118305
+--ADE (5 time steps): 0.0267	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0983
+--ADE (15 time steps): 0.0928	--FDE (15 time steps): 0.1962
+--ADE (20 time steps): 0.1897	--FDE (20 time steps): 1.0972
+--ATE translation: 0.3176
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_64.pth
+[2025-06-20 19:02:40] Epoch: 65		Loss: 4.905631	Loss Translation.: 0.065729	Loss Rotation.: 0.010035	Combined Loss Dist.: 3.788224	Loss Uncertainty: 1.117407
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0372
+--ADE (10 time steps): 0.0531	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1959
+--ADE (20 time steps): 0.1895	--FDE (20 time steps): 1.0973
+--ATE translation: 0.3178
+[2025-06-20 19:03:38] Epoch: 66		Loss: 4.898642	Loss Translation.: 0.065603	Loss Rotation.: 0.010028	Combined Loss Dist.: 3.781524	Loss Uncertainty: 1.117118
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0372
+--ADE (10 time steps): 0.0531	--FDE (10 time steps): 0.0981
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1958
+--ADE (20 time steps): 0.1894	--FDE (20 time steps): 1.0970
+--ATE translation: 0.3176
+[2025-06-20 19:04:37] Epoch: 67		Loss: 4.890965	Loss Translation.: 0.065459	Loss Rotation.: 0.010023	Combined Loss Dist.: 3.774102	Loss Uncertainty: 1.116863
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0372
+--ADE (10 time steps): 0.0531	--FDE (10 time steps): 0.0981
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1956
+--ADE (20 time steps): 0.1893	--FDE (20 time steps): 1.0973
+--ATE translation: 0.3175
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_67.pth
+[2025-06-20 19:05:35] Epoch: 68		Loss: 4.886191	Loss Translation.: 0.065371	Loss Rotation.: 0.010019	Combined Loss Dist.: 3.769492	Loss Uncertainty: 1.116699
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0372
+--ADE (10 time steps): 0.0531	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1957
+--ADE (20 time steps): 0.1893	--FDE (20 time steps): 1.0972
+--ATE translation: 0.3175
+[2025-06-20 19:06:34] Epoch: 69		Loss: 4.881006	Loss Translation.: 0.065277	Loss Rotation.: 0.010013	Combined Loss Dist.: 3.764523	Loss Uncertainty: 1.116483
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0372
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1955
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0973
+--ATE translation: 0.3174
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_69.pth
+[2025-06-20 19:07:33] Epoch: 70		Loss: 4.874616	Loss Translation.: 0.065159	Loss Rotation.: 0.010007	Combined Loss Dist.: 3.758318	Loss Uncertainty: 1.116298
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0372
+--ADE (10 time steps): 0.0531	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1955
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0972
+--ATE translation: 0.3174
+[2025-06-20 19:08:32] Epoch: 71		Loss: 4.869716	Loss Translation.: 0.065071	Loss Rotation.: 0.010002	Combined Loss Dist.: 3.753679	Loss Uncertainty: 1.116037
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0372
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1954
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0968
+--ATE translation: 0.3173
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_71.pth
+[2025-06-20 19:09:30] Epoch: 72		Loss: 4.866606	Loss Translation.: 0.065017	Loss Rotation.: 0.009997	Combined Loss Dist.: 3.750715	Loss Uncertainty: 1.115891
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0979
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1954
+--ADE (20 time steps): 0.1891	--FDE (20 time steps): 1.0971
+--ATE translation: 0.3172
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_72.pth
+[2025-06-20 19:10:29] Epoch: 73		Loss: 4.857293	Loss Translation.: 0.064866	Loss Rotation.: 0.009977	Combined Loss Dist.: 3.742106	Loss Uncertainty: 1.115187
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0981
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1955
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0970
+--ATE translation: 0.3173
+[2025-06-20 19:11:28] Epoch: 74		Loss: 4.852890	Loss Translation.: 0.064788	Loss Rotation.: 0.009970	Combined Loss Dist.: 3.737886	Loss Uncertainty: 1.115003
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0375
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0981
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1956
+--ADE (20 time steps): 0.1893	--FDE (20 time steps): 1.0974
+--ATE translation: 0.3174
+[2025-06-20 19:12:27] Epoch: 75		Loss: 4.850496	Loss Translation.: 0.064744	Loss Rotation.: 0.009967	Combined Loss Dist.: 3.735558	Loss Uncertainty: 1.114939
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0981
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1954
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0968
+--ATE translation: 0.3172
+[2025-06-20 19:13:25] Epoch: 76		Loss: 4.846736	Loss Translation.: 0.064674	Loss Rotation.: 0.009964	Combined Loss Dist.: 3.731916	Loss Uncertainty: 1.114820
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0374
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1954
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0966
+--ATE translation: 0.3172
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_76.pth
+[2025-06-20 19:14:24] Epoch: 77		Loss: 4.844239	Loss Translation.: 0.064629	Loss Rotation.: 0.009961	Combined Loss Dist.: 3.729491	Loss Uncertainty: 1.114748
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0375
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1955
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0970
+--ATE translation: 0.3172
+[2025-06-20 19:15:23] Epoch: 78		Loss: 4.842249	Loss Translation.: 0.064594	Loss Rotation.: 0.009958	Combined Loss Dist.: 3.727570	Loss Uncertainty: 1.114679
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0375
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0981
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1955
+--ADE (20 time steps): 0.1892	--FDE (20 time steps): 1.0972
+--ATE translation: 0.3173
+[2025-06-20 19:16:22] Epoch: 79		Loss: 4.839551	Loss Translation.: 0.064544	Loss Rotation.: 0.009955	Combined Loss Dist.: 3.724960	Loss Uncertainty: 1.114591
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0375
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1954
+--ADE (20 time steps): 0.1891	--FDE (20 time steps): 1.0968
+--ATE translation: 0.3172
+[2025-06-20 19:17:20] Epoch: 80		Loss: 4.836935	Loss Translation.: 0.064496	Loss Rotation.: 0.009953	Combined Loss Dist.: 3.722450	Loss Uncertainty: 1.114485
+--ADE (5 time steps): 0.0266	--FDE (5 time steps): 0.0375
+--ADE (10 time steps): 0.0532	--FDE (10 time steps): 0.0980
+--ADE (15 time steps): 0.0924	--FDE (15 time steps): 0.1954
+--ADE (20 time steps): 0.1891	--FDE (20 time steps): 1.0968
+--ATE translation: 0.3172
+[2025-06-20 19:18:19] Epoch: 81		Loss: 4.833114	Loss Translation.: 0.064440	Loss Rotation.: 0.009940	Combined Loss Dist.: 3.719023	Loss Uncertainty: 1.114091
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0531	--FDE (10 time steps): 0.0978
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1953
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0953
+--ATE translation: 0.3170
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_81.pth
+[2025-06-20 19:19:18] Epoch: 82		Loss: 4.830228	Loss Translation.: 0.064389	Loss Rotation.: 0.009936	Combined Loss Dist.: 3.716284	Loss Uncertainty: 1.113944
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0977
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1952
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0953
+--ATE translation: 0.3169
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_82.pth
+[2025-06-20 19:20:17] Epoch: 83		Loss: 4.828607	Loss Translation.: 0.064359	Loss Rotation.: 0.009935	Combined Loss Dist.: 3.714709	Loss Uncertainty: 1.113898
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0978
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1952
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0951
+--ATE translation: 0.3168
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_83.pth
+[2025-06-20 19:21:16] Epoch: 84		Loss: 4.827347	Loss Translation.: 0.064336	Loss Rotation.: 0.009934	Combined Loss Dist.: 3.713497	Loss Uncertainty: 1.113851
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0978
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1952
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0951
+--ATE translation: 0.3168
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_84.pth
+[2025-06-20 19:22:15] Epoch: 85		Loss: 4.826074	Loss Translation.: 0.064313	Loss Rotation.: 0.009932	Combined Loss Dist.: 3.712267	Loss Uncertainty: 1.113807
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0977
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1952
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0951
+--ATE translation: 0.3168
+[2025-06-20 19:23:13] Epoch: 86		Loss: 4.824443	Loss Translation.: 0.064283	Loss Rotation.: 0.009931	Combined Loss Dist.: 3.710701	Loss Uncertainty: 1.113743
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0977
+--ADE (15 time steps): 0.0923	--FDE (15 time steps): 0.1952
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0950
+--ATE translation: 0.3169
+[2025-06-20 19:24:12] Epoch: 87		Loss: 4.823083	Loss Translation.: 0.064258	Loss Rotation.: 0.009930	Combined Loss Dist.: 3.709374	Loss Uncertainty: 1.113709
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0977
+--ADE (15 time steps): 0.0922	--FDE (15 time steps): 0.1952
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0949
+--ATE translation: 0.3169
+[2025-06-20 19:25:11] Epoch: 88		Loss: 4.821885	Loss Translation.: 0.064236	Loss Rotation.: 0.009929	Combined Loss Dist.: 3.708215	Loss Uncertainty: 1.113670
+--ADE (5 time steps): 0.0265	--FDE (5 time steps): 0.0373
+--ADE (10 time steps): 0.0530	--FDE (10 time steps): 0.0977
+--ADE (15 time steps): 0.0922	--FDE (15 time steps): 0.1951
+--ADE (20 time steps): 0.1890	--FDE (20 time steps): 1.0949
+--ATE translation: 0.3168
+[2025-06-20 19:26:10] Epoch: 89		Loss: 4.822257	Loss Translation.: 0.064252	Loss Rotation.: 0.009922	Combined Loss Dist.: 3.708716	Loss Uncertainty: 1.113541
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_89.pth
+[2025-06-20 19:27:08] Epoch: 90		Loss: 4.820561	Loss Translation.: 0.064222	Loss Rotation.: 0.009921	Combined Loss Dist.: 3.707152	Loss Uncertainty: 1.113410
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_90.pth
+[2025-06-20 19:28:07] Epoch: 91		Loss: 4.819912	Loss Translation.: 0.064211	Loss Rotation.: 0.009920	Combined Loss Dist.: 3.706554	Loss Uncertainty: 1.113358
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_91.pth
+[2025-06-20 19:29:06] Epoch: 92		Loss: 4.818916	Loss Translation.: 0.064192	Loss Rotation.: 0.009920	Combined Loss Dist.: 3.705603	Loss Uncertainty: 1.113312
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_92.pth
+[2025-06-20 19:30:05] Epoch: 93		Loss: 4.818190	Loss Translation.: 0.064179	Loss Rotation.: 0.009919	Combined Loss Dist.: 3.704913	Loss Uncertainty: 1.113277
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_93.pth
+[2025-06-20 19:31:04] Epoch: 94		Loss: 4.817535	Loss Translation.: 0.064167	Loss Rotation.: 0.009919	Combined Loss Dist.: 3.704289	Loss Uncertainty: 1.113246
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_94.pth
+[2025-06-20 19:32:02] Epoch: 95		Loss: 4.816890	Loss Translation.: 0.064155	Loss Rotation.: 0.009918	Combined Loss Dist.: 3.703677	Loss Uncertainty: 1.113213
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_95.pth
+[2025-06-20 19:33:01] Epoch: 96		Loss: 4.816097	Loss Translation.: 0.064141	Loss Rotation.: 0.009918	Combined Loss Dist.: 3.702915	Loss Uncertainty: 1.113182
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0371
+--ADE (10 time steps): 0.0528	--FDE (10 time steps): 0.0975
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1949
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0942
+--ATE translation: 0.3167
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_96.pth
+[2025-06-20 19:34:00] Epoch: 97		Loss: 4.815074	Loss Translation.: 0.064125	Loss Rotation.: 0.009914	Combined Loss Dist.: 3.701944	Loss Uncertainty: 1.113130
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0370
+--ADE (10 time steps): 0.0527	--FDE (10 time steps): 0.0974
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1948
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0939
+--ATE translation: 0.3166
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_97.pth
+[2025-06-20 19:34:59] Epoch: 98		Loss: 4.814396	Loss Translation.: 0.064114	Loss Rotation.: 0.009913	Combined Loss Dist.: 3.701338	Loss Uncertainty: 1.113058
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0370
+--ADE (10 time steps): 0.0527	--FDE (10 time steps): 0.0974
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1948
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0939
+--ATE translation: 0.3166
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_98.pth
+[2025-06-20 19:35:58] Epoch: 99		Loss: 4.813925	Loss Translation.: 0.064105	Loss Rotation.: 0.009913	Combined Loss Dist.: 3.700899	Loss Uncertainty: 1.113026
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0370
+--ADE (10 time steps): 0.0527	--FDE (10 time steps): 0.0974
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1948
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0939
+--ATE translation: 0.3166
+[2025-06-20 19:36:56] Epoch: 100		Loss: 4.813512	Loss Translation.: 0.064098	Loss Rotation.: 0.009912	Combined Loss Dist.: 3.700509	Loss Uncertainty: 1.113003
+--ADE (5 time steps): 0.0264	--FDE (5 time steps): 0.0370
+--ADE (10 time steps): 0.0527	--FDE (10 time steps): 0.0974
+--ADE (15 time steps): 0.0921	--FDE (15 time steps): 0.1948
+--ADE (20 time steps): 0.1888	--FDE (20 time steps): 1.0939
+--ATE translation: 0.3166
+
+JOB STATISTICS
+==============
+Job ID: 12529250
+Cluster: snellius
+User/Group: lbecker/lbecker
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 18
+CPU Utilized: 01:39:47
+CPU Efficiency: 5.63% of 1-05:30:54 core-walltime
+Job Wall-clock time: 01:38:23
+Memory Utilized: 4.58 GB
+Memory Efficiency: 3.82% of 120.00 GB (120.00 GB/node)

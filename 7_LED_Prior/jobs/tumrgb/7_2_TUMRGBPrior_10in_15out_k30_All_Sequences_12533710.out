@@ -1,0 +1,602 @@
+***************************************************************************************************** 
+* WARNING: The 2022 software stack is deprecated. Please consider switching to
+the latest 2024 * 
+* software stack, or the older 2023 software stack. * 
+* * 
+* If you have any question, please contact us via
+http://servicedesk.surfsara.nl. * 
+***************************************************************************************************** 
+
+Configuration:
+description: LED
+results_root_dir: results
+dataset: tumrgb
+dimensions: 7
+past_frames: 10
+future_frames: 15
+min_past_frames: 10
+min_future_frames: 15
+k_preds: 30
+synthetic_gt: straight
+synthetic_noise: random_independent
+traj_mean: [14, 7.5]
+traj_scale: 1
+relative: False
+normalised: False
+overfitting: False
+selected_trajectories: False
+pretrained_core_denoising_model: ./results/checkpoints/base_diffusion_model.p
+debug: False
+diffusion: {'steps': 150, 'beta_start': 0.0001, 'beta_end': 0.05, 'beta_schedule': 'linear'}
+lr: 0.001
+train_batch_size: 64
+test_batch_size: 64
+num_epochs: 100
+test_interval: 1
+lr_scheduler: step
+decay_step: 8
+decay_gamma: 0.5
+
+[INFO] TUMRGB dataset (1 agent).
+Overfitting: False
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg1_desk/groundtruth.txt 93
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg1_desk2/groundtruth.txt 97
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg1_room/groundtruth.txt 195
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg2_xyz/groundtruth.txt 1472
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg3_long_office_household/groundtruth.txt 348
+Time diff avg (fut): 0.11610
+Is 7d already
+Len dataset: 1764
+Overfitting: False
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg1_desk/groundtruth.txt 93
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg1_desk2/groundtruth.txt 97
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg1_room/groundtruth.txt 195
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg2_xyz/groundtruth.txt 1472
+file name & length /home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/rgbd_dataset_freiburg3_long_office_household/groundtruth.txt 348
+Time diff avg (fut): 0.11610
+Is 7d already
+Len dataset: 220
+[INFO] Now using random trajectory shuffling.
+
+[Warning] Only 15 future timesteps available, ADE/FDE will be computed for up to 3 seconds instead of the full 4 seconds.
+
+[INFO] TUMRGB dataset - skip subtracting mean from absolute positions.
+[INFO] Training from scratch - without pretrained models (Not NBA with frame standard configs)
+
+[Core Denoising Model] Trainable/Total: 6584760/6584760
+[Initialization Model] Trainable/Total: 7063248/7063248
+[2025-06-21 00:13:34] Epoch: 1		Loss: 14.005936	Loss Translation.: 0.099448	Loss Rotation.: 0.120334	Combined Loss Dist.: 10.989135	Loss Uncertainty: 3.016800
+--ADE (5 time steps): 0.0228	--FDE (5 time steps): 0.0225
+--ADE (10 time steps): 0.0272	--FDE (10 time steps): 0.0371
+--ADE (15 time steps): 0.1564	--FDE (15 time steps): 0.1243
+--ATE translation: 0.4987
+[2025-06-21 00:13:39] Epoch: 2		Loss: 3.871488	Loss Translation.: 0.015828	Loss Rotation.: 0.014695	Combined Loss Dist.: 1.526170	Loss Uncertainty: 2.345318
+--ADE (5 time steps): 0.0177	--FDE (5 time steps): 0.0193
+--ADE (10 time steps): 0.0195	--FDE (10 time steps): 0.0228
+--ADE (15 time steps): 0.1292	--FDE (15 time steps): 0.0778
+--ATE translation: 0.4204
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_2.pth
+[2025-06-21 00:13:45] Epoch: 3		Loss: 3.274653	Loss Translation.: 0.013418	Loss Rotation.: 0.013266	Combined Loss Dist.: 1.334179	Loss Uncertainty: 1.940474
+--ADE (5 time steps): 0.0163	--FDE (5 time steps): 0.0120
+--ADE (10 time steps): 0.0186	--FDE (10 time steps): 0.0184
+--ADE (15 time steps): 0.0257	--FDE (15 time steps): 0.0204
+--ATE translation: 0.0345
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_3.pth
+[2025-06-21 00:13:50] Epoch: 4		Loss: 2.704011	Loss Translation.: 0.012111	Loss Rotation.: 0.013037	Combined Loss Dist.: 1.257405	Loss Uncertainty: 1.446605
+--ADE (5 time steps): 0.0162	--FDE (5 time steps): 0.0082
+--ADE (10 time steps): 0.0182	--FDE (10 time steps): 0.0123
+--ADE (15 time steps): 0.0212	--FDE (15 time steps): 0.0170
+--ATE translation: 0.0230
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_4.pth
+[2025-06-21 00:13:56] Epoch: 5		Loss: 2.134001	Loss Translation.: 0.011544	Loss Rotation.: 0.013192	Combined Loss Dist.: 1.236796	Loss Uncertainty: 0.897205
+--ADE (5 time steps): 0.0130	--FDE (5 time steps): 0.0101
+--ADE (10 time steps): 0.0159	--FDE (10 time steps): 0.0147
+--ADE (15 time steps): 0.0190	--FDE (15 time steps): 0.0202
+--ATE translation: 0.0205
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_5.pth
+[2025-06-21 00:14:01] Epoch: 6		Loss: 1.742805	Loss Translation.: 0.011047	Loss Rotation.: 0.012824	Combined Loss Dist.: 1.193545	Loss Uncertainty: 0.549260
+--ADE (5 time steps): 0.0132	--FDE (5 time steps): 0.0107
+--ADE (10 time steps): 0.0158	--FDE (10 time steps): 0.0126
+--ADE (15 time steps): 0.0193	--FDE (15 time steps): 0.0219
+--ATE translation: 0.0208
+[2025-06-21 00:14:07] Epoch: 7		Loss: 1.472672	Loss Translation.: 0.010464	Loss Rotation.: 0.012212	Combined Loss Dist.: 1.133768	Loss Uncertainty: 0.338903
+--ADE (5 time steps): 0.0120	--FDE (5 time steps): 0.0101
+--ADE (10 time steps): 0.0147	--FDE (10 time steps): 0.0119
+--ADE (15 time steps): 0.0178	--FDE (15 time steps): 0.0212
+--ATE translation: 0.0193
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_7.pth
+[2025-06-21 00:14:12] Epoch: 8		Loss: 1.323585	Loss Translation.: 0.009868	Loss Rotation.: 0.011917	Combined Loss Dist.: 1.089252	Loss Uncertainty: 0.234333
+--ADE (5 time steps): 0.0123	--FDE (5 time steps): 0.0074
+--ADE (10 time steps): 0.0138	--FDE (10 time steps): 0.0101
+--ADE (15 time steps): 0.0163	--FDE (15 time steps): 0.0178
+--ATE translation: 0.0175
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_8.pth
+[2025-06-21 00:14:18] Epoch: 9		Loss: 1.141925	Loss Translation.: 0.008747	Loss Rotation.: 0.011085	Combined Loss Dist.: 0.991630	Loss Uncertainty: 0.150295
+--ADE (5 time steps): 0.0111	--FDE (5 time steps): 0.0080
+--ADE (10 time steps): 0.0126	--FDE (10 time steps): 0.0098
+--ADE (15 time steps): 0.0147	--FDE (15 time steps): 0.0152
+--ATE translation: 0.0155
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_9.pth
+[2025-06-21 00:14:23] Epoch: 10		Loss: 1.098958	Loss Translation.: 0.008616	Loss Rotation.: 0.010844	Combined Loss Dist.: 0.973034	Loss Uncertainty: 0.125924
+--ADE (5 time steps): 0.0111	--FDE (5 time steps): 0.0095
+--ADE (10 time steps): 0.0132	--FDE (10 time steps): 0.0118
+--ADE (15 time steps): 0.0150	--FDE (15 time steps): 0.0168
+--ATE translation: 0.0157
+[2025-06-21 00:14:28] Epoch: 11		Loss: 1.091229	Loss Translation.: 0.008437	Loss Rotation.: 0.010684	Combined Loss Dist.: 0.956055	Loss Uncertainty: 0.135174
+--ADE (5 time steps): 0.0103	--FDE (5 time steps): 0.0080
+--ADE (10 time steps): 0.0120	--FDE (10 time steps): 0.0086
+--ADE (15 time steps): 0.0138	--FDE (15 time steps): 0.0146
+--ATE translation: 0.0146
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_11.pth
+[2025-06-21 00:14:34] Epoch: 12		Loss: 0.974679	Loss Translation.: 0.007999	Loss Rotation.: 0.010545	Combined Loss Dist.: 0.927226	Loss Uncertainty: 0.047452
+--ADE (5 time steps): 0.0107	--FDE (5 time steps): 0.0087
+--ADE (10 time steps): 0.0121	--FDE (10 time steps): 0.0081
+--ADE (15 time steps): 0.0135	--FDE (15 time steps): 0.0138
+--ATE translation: 0.0142
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_12.pth
+[2025-06-21 00:14:39] Epoch: 13		Loss: 0.924935	Loss Translation.: 0.007865	Loss Rotation.: 0.010303	Combined Loss Dist.: 0.908396	Loss Uncertainty: 0.016539
+--ADE (5 time steps): 0.0100	--FDE (5 time steps): 0.0072
+--ADE (10 time steps): 0.0113	--FDE (10 time steps): 0.0090
+--ADE (15 time steps): 0.0130	--FDE (15 time steps): 0.0152
+--ATE translation: 0.0136
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_13.pth
+[2025-06-21 00:14:45] Epoch: 14		Loss: 0.949349	Loss Translation.: 0.007904	Loss Rotation.: 0.010390	Combined Loss Dist.: 0.914694	Loss Uncertainty: 0.034655
+--ADE (5 time steps): 0.0104	--FDE (5 time steps): 0.0074
+--ADE (10 time steps): 0.0114	--FDE (10 time steps): 0.0084
+--ADE (15 time steps): 0.0129	--FDE (15 time steps): 0.0146
+--ATE translation: 0.0139
+[2025-06-21 00:14:50] Epoch: 15		Loss: 0.877538	Loss Translation.: 0.007327	Loss Rotation.: 0.010175	Combined Loss Dist.: 0.875137	Loss Uncertainty: 0.002401
+--ADE (5 time steps): 0.0100	--FDE (5 time steps): 0.0075
+--ADE (10 time steps): 0.0111	--FDE (10 time steps): 0.0091
+--ADE (15 time steps): 0.0126	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0133
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_15.pth
+[2025-06-21 00:14:56] Epoch: 16		Loss: 0.892267	Loss Translation.: 0.007465	Loss Rotation.: 0.010244	Combined Loss Dist.: 0.885425	Loss Uncertainty: 0.006841
+--ADE (5 time steps): 0.0103	--FDE (5 time steps): 0.0086
+--ADE (10 time steps): 0.0116	--FDE (10 time steps): 0.0084
+--ADE (15 time steps): 0.0130	--FDE (15 time steps): 0.0160
+--ATE translation: 0.0136
+[2025-06-21 00:15:01] Epoch: 17		Loss: 0.805533	Loss Translation.: 0.006886	Loss Rotation.: 0.009787	Combined Loss Dist.: 0.833632	Loss Uncertainty: -0.028100
+--ADE (5 time steps): 0.0094	--FDE (5 time steps): 0.0080
+--ADE (10 time steps): 0.0100	--FDE (10 time steps): 0.0076
+--ADE (15 time steps): 0.0115	--FDE (15 time steps): 0.0130
+--ATE translation: 0.0120
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_17.pth
+[2025-06-21 00:15:07] Epoch: 18		Loss: 0.725712	Loss Translation.: 0.006200	Loss Rotation.: 0.009556	Combined Loss Dist.: 0.787800	Loss Uncertainty: -0.062088
+--ADE (5 time steps): 0.0091	--FDE (5 time steps): 0.0063
+--ADE (10 time steps): 0.0096	--FDE (10 time steps): 0.0082
+--ADE (15 time steps): 0.0109	--FDE (15 time steps): 0.0119
+--ATE translation: 0.0115
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_18.pth
+[2025-06-21 00:15:12] Epoch: 19		Loss: 0.691161	Loss Translation.: 0.005824	Loss Rotation.: 0.009396	Combined Loss Dist.: 0.760981	Loss Uncertainty: -0.069820
+--ADE (5 time steps): 0.0082	--FDE (5 time steps): 0.0067
+--ADE (10 time steps): 0.0090	--FDE (10 time steps): 0.0073
+--ADE (15 time steps): 0.0112	--FDE (15 time steps): 0.0134
+--ATE translation: 0.0119
+[2025-06-21 00:15:17] Epoch: 20		Loss: 0.672217	Loss Translation.: 0.005660	Loss Rotation.: 0.009478	Combined Loss Dist.: 0.756900	Loss Uncertainty: -0.084683
+--ADE (5 time steps): 0.0073	--FDE (5 time steps): 0.0062
+--ADE (10 time steps): 0.0080	--FDE (10 time steps): 0.0073
+--ADE (15 time steps): 0.0095	--FDE (15 time steps): 0.0143
+--ATE translation: 0.0103
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_20.pth
+[2025-06-21 00:15:23] Epoch: 21		Loss: 0.651173	Loss Translation.: 0.005292	Loss Rotation.: 0.009643	Combined Loss Dist.: 0.746716	Loss Uncertainty: -0.095543
+--ADE (5 time steps): 0.0076	--FDE (5 time steps): 0.0063
+--ADE (10 time steps): 0.0081	--FDE (10 time steps): 0.0068
+--ADE (15 time steps): 0.0097	--FDE (15 time steps): 0.0121
+--ATE translation: 0.0104
+[2025-06-21 00:15:28] Epoch: 22		Loss: 0.605137	Loss Translation.: 0.005153	Loss Rotation.: 0.009274	Combined Loss Dist.: 0.721365	Loss Uncertainty: -0.116229
+--ADE (5 time steps): 0.0069	--FDE (5 time steps): 0.0058
+--ADE (10 time steps): 0.0077	--FDE (10 time steps): 0.0065
+--ADE (15 time steps): 0.0090	--FDE (15 time steps): 0.0114
+--ATE translation: 0.0098
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_22.pth
+[2025-06-21 00:15:34] Epoch: 23		Loss: 0.568889	Loss Translation.: 0.004905	Loss Rotation.: 0.008983	Combined Loss Dist.: 0.694408	Loss Uncertainty: -0.125519
+--ADE (5 time steps): 0.0072	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0078	--FDE (10 time steps): 0.0066
+--ADE (15 time steps): 0.0094	--FDE (15 time steps): 0.0118
+--ATE translation: 0.0101
+[2025-06-21 00:15:39] Epoch: 24		Loss: 0.563912	Loss Translation.: 0.004866	Loss Rotation.: 0.009025	Combined Loss Dist.: 0.694534	Loss Uncertainty: -0.130622
+--ADE (5 time steps): 0.0076	--FDE (5 time steps): 0.0061
+--ADE (10 time steps): 0.0085	--FDE (10 time steps): 0.0066
+--ADE (15 time steps): 0.0107	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0115
+[2025-06-21 00:15:45] Epoch: 25		Loss: 0.515972	Loss Translation.: 0.004636	Loss Rotation.: 0.008679	Combined Loss Dist.: 0.665724	Loss Uncertainty: -0.149752
+--ADE (5 time steps): 0.0066	--FDE (5 time steps): 0.0058
+--ADE (10 time steps): 0.0072	--FDE (10 time steps): 0.0068
+--ADE (15 time steps): 0.0089	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0096
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_25.pth
+[2025-06-21 00:15:50] Epoch: 26		Loss: 0.435673	Loss Translation.: 0.004217	Loss Rotation.: 0.007989	Combined Loss Dist.: 0.610300	Loss Uncertainty: -0.174627
+--ADE (5 time steps): 0.0063	--FDE (5 time steps): 0.0057
+--ADE (10 time steps): 0.0069	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0084	--FDE (15 time steps): 0.0135
+--ATE translation: 0.0091
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_26.pth
+[2025-06-21 00:15:55] Epoch: 27		Loss: 0.398281	Loss Translation.: 0.003950	Loss Rotation.: 0.007733	Combined Loss Dist.: 0.584126	Loss Uncertainty: -0.185845
+--ADE (5 time steps): 0.0061	--FDE (5 time steps): 0.0056
+--ADE (10 time steps): 0.0066	--FDE (10 time steps): 0.0065
+--ADE (15 time steps): 0.0079	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0086
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_27.pth
+[2025-06-21 00:16:01] Epoch: 28		Loss: 0.371096	Loss Translation.: 0.003830	Loss Rotation.: 0.007537	Combined Loss Dist.: 0.568385	Loss Uncertainty: -0.197289
+--ADE (5 time steps): 0.0058	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0063	--FDE (10 time steps): 0.0063
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0134
+--ATE translation: 0.0084
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_28.pth
+[2025-06-21 00:16:06] Epoch: 29		Loss: 0.351123	Loss Translation.: 0.003671	Loss Rotation.: 0.007465	Combined Loss Dist.: 0.556802	Loss Uncertainty: -0.205679
+--ADE (5 time steps): 0.0056	--FDE (5 time steps): 0.0052
+--ADE (10 time steps): 0.0063	--FDE (10 time steps): 0.0065
+--ADE (15 time steps): 0.0079	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0085
+[2025-06-21 00:16:12] Epoch: 30		Loss: 0.328595	Loss Translation.: 0.003694	Loss Rotation.: 0.007203	Combined Loss Dist.: 0.544836	Loss Uncertainty: -0.216241
+--ADE (5 time steps): 0.0056	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0063	--FDE (10 time steps): 0.0063
+--ADE (15 time steps): 0.0079	--FDE (15 time steps): 0.0135
+--ATE translation: 0.0086
+[2025-06-21 00:16:17] Epoch: 31		Loss: 0.320788	Loss Translation.: 0.003641	Loss Rotation.: 0.007240	Combined Loss Dist.: 0.544028	Loss Uncertainty: -0.223240
+--ADE (5 time steps): 0.0056	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0062	--FDE (10 time steps): 0.0062
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0129
+--ATE translation: 0.0084
+[2025-06-21 00:16:23] Epoch: 32		Loss: 0.308851	Loss Translation.: 0.003613	Loss Rotation.: 0.007196	Combined Loss Dist.: 0.540464	Loss Uncertainty: -0.231614
+--ADE (5 time steps): 0.0058	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0066	--FDE (10 time steps): 0.0067
+--ADE (15 time steps): 0.0081	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0088
+[2025-06-21 00:16:28] Epoch: 33		Loss: 0.278031	Loss Translation.: 0.003572	Loss Rotation.: 0.006808	Combined Loss Dist.: 0.518966	Loss Uncertainty: -0.240935
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0052
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0065
+--ADE (15 time steps): 0.0075	--FDE (15 time steps): 0.0139
+--ATE translation: 0.0081
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_33.pth
+[2025-06-21 00:16:33] Epoch: 34		Loss: 0.251733	Loss Translation.: 0.003386	Loss Rotation.: 0.006593	Combined Loss Dist.: 0.498929	Loss Uncertainty: -0.247196
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0052
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0065
+--ADE (15 time steps): 0.0073	--FDE (15 time steps): 0.0131
+--ATE translation: 0.0079
+[INFO] New best model (ATE)! Checkpoint saved to ./results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_34.pth
+[2025-06-21 00:16:39] Epoch: 35		Loss: 0.245661	Loss Translation.: 0.003316	Loss Rotation.: 0.006610	Combined Loss Dist.: 0.496324	Loss Uncertainty: -0.250663
+--ADE (5 time steps): 0.0056	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0062	--FDE (10 time steps): 0.0068
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0134
+--ATE translation: 0.0082
+[2025-06-21 00:16:44] Epoch: 36		Loss: 0.240506	Loss Translation.: 0.003320	Loss Rotation.: 0.006518	Combined Loss Dist.: 0.491930	Loss Uncertainty: -0.251424
+--ADE (5 time steps): 0.0052	--FDE (5 time steps): 0.0052
+--ADE (10 time steps): 0.0059	--FDE (10 time steps): 0.0065
+--ADE (15 time steps): 0.0075	--FDE (15 time steps): 0.0142
+--ATE translation: 0.0082
+[2025-06-21 00:16:50] Epoch: 37		Loss: 0.229093	Loss Translation.: 0.003253	Loss Rotation.: 0.006473	Combined Loss Dist.: 0.486270	Loss Uncertainty: -0.257178
+--ADE (5 time steps): 0.0055	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0065
+--ADE (15 time steps): 0.0074	--FDE (15 time steps): 0.0133
+--ATE translation: 0.0080
+[2025-06-21 00:16:55] Epoch: 38		Loss: 0.225710	Loss Translation.: 0.003235	Loss Rotation.: 0.006460	Combined Loss Dist.: 0.484727	Loss Uncertainty: -0.259017
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0051
+--ADE (10 time steps): 0.0058	--FDE (10 time steps): 0.0064
+--ADE (15 time steps): 0.0073	--FDE (15 time steps): 0.0134
+--ATE translation: 0.0080
+[2025-06-21 00:17:00] Epoch: 39		Loss: 0.229068	Loss Translation.: 0.003220	Loss Rotation.: 0.006588	Combined Loss Dist.: 0.490387	Loss Uncertainty: -0.261319
+--ADE (5 time steps): 0.0055	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0068
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0145
+--ATE translation: 0.0084
+[2025-06-21 00:17:06] Epoch: 40		Loss: 0.212490	Loss Translation.: 0.003223	Loss Rotation.: 0.006276	Combined Loss Dist.: 0.474940	Loss Uncertainty: -0.262450
+--ADE (5 time steps): 0.0052	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0058	--FDE (10 time steps): 0.0064
+--ADE (15 time steps): 0.0073	--FDE (15 time steps): 0.0138
+--ATE translation: 0.0080
+[2025-06-21 00:17:11] Epoch: 41		Loss: 0.187175	Loss Translation.: 0.003076	Loss Rotation.: 0.006034	Combined Loss Dist.: 0.455516	Loss Uncertainty: -0.268340
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0067
+--ADE (15 time steps): 0.0075	--FDE (15 time steps): 0.0138
+--ATE translation: 0.0081
+[2025-06-21 00:17:16] Epoch: 42		Loss: 0.188037	Loss Translation.: 0.003140	Loss Rotation.: 0.005988	Combined Loss Dist.: 0.456399	Loss Uncertainty: -0.268362
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0143
+--ATE translation: 0.0084
+[2025-06-21 00:17:22] Epoch: 43		Loss: 0.172981	Loss Translation.: 0.003014	Loss Rotation.: 0.005845	Combined Loss Dist.: 0.442957	Loss Uncertainty: -0.269977
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0052
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0083
+[2025-06-21 00:17:27] Epoch: 44		Loss: 0.172010	Loss Translation.: 0.003013	Loss Rotation.: 0.005843	Combined Loss Dist.: 0.442796	Loss Uncertainty: -0.270786
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0145
+--ATE translation: 0.0084
+[2025-06-21 00:17:33] Epoch: 45		Loss: 0.170692	Loss Translation.: 0.003007	Loss Rotation.: 0.005824	Combined Loss Dist.: 0.441548	Loss Uncertainty: -0.270856
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0055
+--ADE (10 time steps): 0.0062	--FDE (10 time steps): 0.0074
+--ADE (15 time steps): 0.0080	--FDE (15 time steps): 0.0148
+--ATE translation: 0.0087
+[2025-06-21 00:17:38] Epoch: 46		Loss: 0.170242	Loss Translation.: 0.003018	Loss Rotation.: 0.005806	Combined Loss Dist.: 0.441205	Loss Uncertainty: -0.270963
+--ADE (5 time steps): 0.0056	--FDE (5 time steps): 0.0056
+--ADE (10 time steps): 0.0063	--FDE (10 time steps): 0.0073
+--ADE (15 time steps): 0.0079	--FDE (15 time steps): 0.0150
+--ATE translation: 0.0086
+[2025-06-21 00:17:43] Epoch: 47		Loss: 0.167656	Loss Translation.: 0.002975	Loss Rotation.: 0.005814	Combined Loss Dist.: 0.439430	Loss Uncertainty: -0.271774
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0078	--FDE (15 time steps): 0.0147
+--ATE translation: 0.0085
+[2025-06-21 00:17:49] Epoch: 48		Loss: 0.160746	Loss Translation.: 0.002938	Loss Rotation.: 0.005740	Combined Loss Dist.: 0.433893	Loss Uncertainty: -0.273148
+--ADE (5 time steps): 0.0055	--FDE (5 time steps): 0.0055
+--ADE (10 time steps): 0.0062	--FDE (10 time steps): 0.0072
+--ADE (15 time steps): 0.0079	--FDE (15 time steps): 0.0148
+--ATE translation: 0.0086
+[2025-06-21 00:17:54] Epoch: 49		Loss: 0.150491	Loss Translation.: 0.002878	Loss Rotation.: 0.005644	Combined Loss Dist.: 0.426098	Loss Uncertainty: -0.275607
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0069
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0138
+--ATE translation: 0.0082
+[2025-06-21 00:17:59] Epoch: 50		Loss: 0.140401	Loss Translation.: 0.002807	Loss Rotation.: 0.005546	Combined Loss Dist.: 0.417673	Loss Uncertainty: -0.277273
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0141
+--ATE translation: 0.0083
+[2025-06-21 00:18:05] Epoch: 51		Loss: 0.139372	Loss Translation.: 0.002805	Loss Rotation.: 0.005530	Combined Loss Dist.: 0.416756	Loss Uncertainty: -0.277384
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0083
+[2025-06-21 00:18:10] Epoch: 52		Loss: 0.134935	Loss Translation.: 0.002778	Loss Rotation.: 0.005487	Combined Loss Dist.: 0.413208	Loss Uncertainty: -0.278273
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0141
+--ATE translation: 0.0083
+[2025-06-21 00:18:16] Epoch: 53		Loss: 0.132164	Loss Translation.: 0.002761	Loss Rotation.: 0.005454	Combined Loss Dist.: 0.410761	Loss Uncertainty: -0.278597
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0141
+--ATE translation: 0.0083
+[2025-06-21 00:18:21] Epoch: 54		Loss: 0.129439	Loss Translation.: 0.002747	Loss Rotation.: 0.005425	Combined Loss Dist.: 0.408587	Loss Uncertainty: -0.279147
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0141
+--ATE translation: 0.0083
+[2025-06-21 00:18:26] Epoch: 55		Loss: 0.127529	Loss Translation.: 0.002739	Loss Rotation.: 0.005402	Combined Loss Dist.: 0.407081	Loss Uncertainty: -0.279553
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0141
+--ATE translation: 0.0083
+[2025-06-21 00:18:32] Epoch: 56		Loss: 0.124620	Loss Translation.: 0.002727	Loss Rotation.: 0.005367	Combined Loss Dist.: 0.404708	Loss Uncertainty: -0.280088
+--ADE (5 time steps): 0.0054	--FDE (5 time steps): 0.0054
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0141
+--ATE translation: 0.0083
+[2025-06-21 00:18:37] Epoch: 57		Loss: 0.120631	Loss Translation.: 0.002693	Loss Rotation.: 0.005337	Combined Loss Dist.: 0.401496	Loss Uncertainty: -0.280866
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:18:42] Epoch: 58		Loss: 0.117738	Loss Translation.: 0.002675	Loss Rotation.: 0.005306	Combined Loss Dist.: 0.399062	Loss Uncertainty: -0.281324
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:18:48] Epoch: 59		Loss: 0.116339	Loss Translation.: 0.002665	Loss Rotation.: 0.005294	Combined Loss Dist.: 0.397953	Loss Uncertainty: -0.281615
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:18:53] Epoch: 60		Loss: 0.114590	Loss Translation.: 0.002658	Loss Rotation.: 0.005272	Combined Loss Dist.: 0.396495	Loss Uncertainty: -0.281904
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:18:59] Epoch: 61		Loss: 0.113303	Loss Translation.: 0.002652	Loss Rotation.: 0.005257	Combined Loss Dist.: 0.395456	Loss Uncertainty: -0.282152
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:19:04] Epoch: 62		Loss: 0.111885	Loss Translation.: 0.002645	Loss Rotation.: 0.005242	Combined Loss Dist.: 0.394325	Loss Uncertainty: -0.282441
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:19:09] Epoch: 63		Loss: 0.110640	Loss Translation.: 0.002639	Loss Rotation.: 0.005227	Combined Loss Dist.: 0.393337	Loss Uncertainty: -0.282697
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:19:15] Epoch: 64		Loss: 0.109402	Loss Translation.: 0.002634	Loss Rotation.: 0.005214	Combined Loss Dist.: 0.392387	Loss Uncertainty: -0.282985
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0061	--FDE (10 time steps): 0.0072
+--ADE (15 time steps): 0.0077	--FDE (15 time steps): 0.0140
+--ATE translation: 0.0084
+[2025-06-21 00:19:20] Epoch: 65		Loss: 0.113668	Loss Translation.: 0.002673	Loss Rotation.: 0.005261	Combined Loss Dist.: 0.396702	Loss Uncertainty: -0.283034
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:19:25] Epoch: 66		Loss: 0.115175	Loss Translation.: 0.002684	Loss Rotation.: 0.005283	Combined Loss Dist.: 0.398330	Loss Uncertainty: -0.283155
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:19:31] Epoch: 67		Loss: 0.111697	Loss Translation.: 0.002652	Loss Rotation.: 0.005249	Combined Loss Dist.: 0.395054	Loss Uncertainty: -0.283357
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:19:36] Epoch: 68		Loss: 0.111248	Loss Translation.: 0.002651	Loss Rotation.: 0.005244	Combined Loss Dist.: 0.394743	Loss Uncertainty: -0.283495
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:19:42] Epoch: 69		Loss: 0.110795	Loss Translation.: 0.002648	Loss Rotation.: 0.005240	Combined Loss Dist.: 0.394412	Loss Uncertainty: -0.283617
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:19:47] Epoch: 70		Loss: 0.110066	Loss Translation.: 0.002643	Loss Rotation.: 0.005233	Combined Loss Dist.: 0.393792	Loss Uncertainty: -0.283726
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:19:52] Epoch: 71		Loss: 0.109507	Loss Translation.: 0.002639	Loss Rotation.: 0.005228	Combined Loss Dist.: 0.393331	Loss Uncertainty: -0.283824
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:19:58] Epoch: 72		Loss: 0.108957	Loss Translation.: 0.002635	Loss Rotation.: 0.005222	Combined Loss Dist.: 0.392886	Loss Uncertainty: -0.283929
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:20:03] Epoch: 73		Loss: 0.107471	Loss Translation.: 0.002611	Loss Rotation.: 0.005220	Combined Loss Dist.: 0.391562	Loss Uncertainty: -0.284091
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0070
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:20:08] Epoch: 74		Loss: 0.105323	Loss Translation.: 0.002603	Loss Rotation.: 0.005191	Combined Loss Dist.: 0.389700	Loss Uncertainty: -0.284377
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:14] Epoch: 75		Loss: 0.104691	Loss Translation.: 0.002603	Loss Rotation.: 0.005180	Combined Loss Dist.: 0.389127	Loss Uncertainty: -0.284437
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0136
+--ATE translation: 0.0082
+[2025-06-21 00:20:19] Epoch: 76		Loss: 0.104247	Loss Translation.: 0.002601	Loss Rotation.: 0.005174	Combined Loss Dist.: 0.388745	Loss Uncertainty: -0.284498
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:25] Epoch: 77		Loss: 0.103914	Loss Translation.: 0.002600	Loss Rotation.: 0.005170	Combined Loss Dist.: 0.388478	Loss Uncertainty: -0.284564
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:30] Epoch: 78		Loss: 0.103514	Loss Translation.: 0.002598	Loss Rotation.: 0.005165	Combined Loss Dist.: 0.388147	Loss Uncertainty: -0.284633
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:35] Epoch: 79		Loss: 0.103204	Loss Translation.: 0.002596	Loss Rotation.: 0.005162	Combined Loss Dist.: 0.387906	Loss Uncertainty: -0.284701
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:41] Epoch: 80		Loss: 0.102841	Loss Translation.: 0.002595	Loss Rotation.: 0.005157	Combined Loss Dist.: 0.387608	Loss Uncertainty: -0.284767
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:46] Epoch: 81		Loss: 0.100940	Loss Translation.: 0.002584	Loss Rotation.: 0.005133	Combined Loss Dist.: 0.385860	Loss Uncertainty: -0.284920
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:51] Epoch: 82		Loss: 0.100473	Loss Translation.: 0.002582	Loss Rotation.: 0.005127	Combined Loss Dist.: 0.385460	Loss Uncertainty: -0.284988
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:20:57] Epoch: 83		Loss: 0.100275	Loss Translation.: 0.002582	Loss Rotation.: 0.005124	Combined Loss Dist.: 0.385307	Loss Uncertainty: -0.285032
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:02] Epoch: 84		Loss: 0.100081	Loss Translation.: 0.002581	Loss Rotation.: 0.005122	Combined Loss Dist.: 0.385151	Loss Uncertainty: -0.285070
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:07] Epoch: 85		Loss: 0.099896	Loss Translation.: 0.002580	Loss Rotation.: 0.005120	Combined Loss Dist.: 0.385013	Loss Uncertainty: -0.285117
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:13] Epoch: 86		Loss: 0.099679	Loss Translation.: 0.002579	Loss Rotation.: 0.005118	Combined Loss Dist.: 0.384833	Loss Uncertainty: -0.285154
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:18] Epoch: 87		Loss: 0.099529	Loss Translation.: 0.002578	Loss Rotation.: 0.005116	Combined Loss Dist.: 0.384724	Loss Uncertainty: -0.285196
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:24] Epoch: 88		Loss: 0.099324	Loss Translation.: 0.002577	Loss Rotation.: 0.005114	Combined Loss Dist.: 0.384564	Loss Uncertainty: -0.285240
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:29] Epoch: 89		Loss: 0.098427	Loss Translation.: 0.002572	Loss Rotation.: 0.005103	Combined Loss Dist.: 0.383750	Loss Uncertainty: -0.285323
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:34] Epoch: 90		Loss: 0.098305	Loss Translation.: 0.002572	Loss Rotation.: 0.005101	Combined Loss Dist.: 0.383644	Loss Uncertainty: -0.285339
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:21:40] Epoch: 91		Loss: 0.098215	Loss Translation.: 0.002572	Loss Rotation.: 0.005100	Combined Loss Dist.: 0.383578	Loss Uncertainty: -0.285364
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:21:45] Epoch: 92		Loss: 0.098119	Loss Translation.: 0.002571	Loss Rotation.: 0.005099	Combined Loss Dist.: 0.383505	Loss Uncertainty: -0.285386
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:21:50] Epoch: 93		Loss: 0.098046	Loss Translation.: 0.002571	Loss Rotation.: 0.005098	Combined Loss Dist.: 0.383452	Loss Uncertainty: -0.285406
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0082
+[2025-06-21 00:21:56] Epoch: 94		Loss: 0.097927	Loss Translation.: 0.002570	Loss Rotation.: 0.005097	Combined Loss Dist.: 0.383352	Loss Uncertainty: -0.285425
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:22:01] Epoch: 95		Loss: 0.097848	Loss Translation.: 0.002570	Loss Rotation.: 0.005096	Combined Loss Dist.: 0.383297	Loss Uncertainty: -0.285449
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:22:06] Epoch: 96		Loss: 0.097759	Loss Translation.: 0.002569	Loss Rotation.: 0.005095	Combined Loss Dist.: 0.383227	Loss Uncertainty: -0.285468
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:22:12] Epoch: 97		Loss: 0.097345	Loss Translation.: 0.002567	Loss Rotation.: 0.005090	Combined Loss Dist.: 0.382855	Loss Uncertainty: -0.285511
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:22:17] Epoch: 98		Loss: 0.097285	Loss Translation.: 0.002567	Loss Rotation.: 0.005089	Combined Loss Dist.: 0.382805	Loss Uncertainty: -0.285520
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:22:23] Epoch: 99		Loss: 0.097243	Loss Translation.: 0.002567	Loss Rotation.: 0.005089	Combined Loss Dist.: 0.382773	Loss Uncertainty: -0.285529
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+[2025-06-21 00:22:28] Epoch: 100		Loss: 0.097203	Loss Translation.: 0.002567	Loss Rotation.: 0.005088	Combined Loss Dist.: 0.382743	Loss Uncertainty: -0.285540
+--ADE (5 time steps): 0.0053	--FDE (5 time steps): 0.0053
+--ADE (10 time steps): 0.0060	--FDE (10 time steps): 0.0071
+--ADE (15 time steps): 0.0076	--FDE (15 time steps): 0.0137
+--ATE translation: 0.0083
+
+JOB STATISTICS
+==============
+Job ID: 12533710
+Cluster: snellius
+User/Group: lbecker/lbecker
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 18
+CPU Utilized: 00:10:09
+CPU Efficiency: 6.04% of 02:48:00 core-walltime
+Job Wall-clock time: 00:09:20
+Memory Utilized: 3.72 GB
+Memory Efficiency: 3.10% of 120.00 GB (120.00 GB/node)

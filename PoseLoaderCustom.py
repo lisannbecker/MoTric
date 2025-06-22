@@ -40,10 +40,20 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
         ### 0. Define dataset file paths
         if dataset == 'kitti':
             indices = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'] #uncomment '04', '03'
-            file_names = [f'/scratch-shared/scur_2440/kitti/poses/{idx}.txt' for idx in indices]
+            file_names = [f'/home/lbecker/MoTric/datasets/kitti/poses/{idx}.txt' for idx in indices]
             # file_names = [f'/home/scur2440/MoTric/KITTI_odometry/dataset/poses/{idx}.txt' for idx in indices]
+        
+        elif dataset == 'tumrgb':
+            seqs = ['rgbd_dataset_freiburg1_desk'
+                    'rgbd_dataset_freiburg1_desk2',
+                    'rgbd_dataset_freiburg1_room',
+                    'rgbd_dataset_freiburg2_xyz',
+                    'rgbd_dataset_freiburg3_long_office_household'
+                    ]
+            file_names = [f'/home/lbecker/MoTric/SplaTAM/data/TUM_RGBD/{s}/groundtruth.txt' for s in seqs]
+        
         elif dataset == 'synthetic':
-            dataset_path = '/home/scur2440/MoTric/synthetic_data'
+            dataset_path = '/home/lbecker/MoTric/datasets/synthetic'
             gt_type = synthetic_gt #straight, right_curve
             noise_type = synthetic_noise #random_independent, random_walk, right_bias
 
@@ -51,38 +61,40 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
             noisy_file = f'{dataset_path}/{gt_type}_{noise_type}/synthetic_noisy_past_poses.txt'
 
         elif dataset == 'newer':
-            dataset_path = '/home/scur2440/MoTric/NewerCollege'
+            dataset_path = '/home/lbecker/MoTric/datasets/newer'
             file_names = [
-                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-easy.csv', 
-                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-medium.csv',
-                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-quad-hard.csv',
-                          f'{dataset_path}/collection1/ground_truth/tum_format/gt-nc-stairs.csv',
-                          f'{dataset_path}/collection2/ground_truth/tum_format/gt-nc-park.csv',
-                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_easy.csv',
-                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_medium.csv',
-                          f'{dataset_path}/collection3_maths/ground_truth/tum_format/gt_math_hard.csv'
+                          f'{dataset_path}/collection1_newer_college/gt-nc-quad-easy.csv', 
+                          f'{dataset_path}/collection1_newer_college/gt-nc-quad-medium.csv',
+                          f'{dataset_path}/collection1_newer_college/gt-nc-quad-hard.csv',
+                          f'{dataset_path}/collection1_newer_college/gt-nc-stairs.csv',
+                          #f'{dataset_path}/collection2_newer_college/gt-nc-cloister.csv',
+                          f'{dataset_path}/collection2_newer_college/gt-nc-park.csv',
+                          f'{dataset_path}/collection3_maths_institute/gt_math_easy.csv',
+                          f'{dataset_path}/collection3_maths_institute/gt_math_medium.csv',
+                          f'{dataset_path}/collection3_maths_institute/gt_math_hard.csv'
                           ]
         elif dataset == 'spires': 
-            dataset_path = '/home/scur2440/MoTric/Spires'
+            dataset_path = '/home/lbecker/MoTric/datasets/spires'
             file_names = [f'{dataset_path}/2024-03-13-observatory-quarter-01/gt-tum.txt',
                           f'{dataset_path}/2024-03-13-observatory-quarter-02/gt-tum.txt',
                           f'{dataset_path}/2024-05-20-bodleian-library-02/gt-tum.txt'
                           ]
         elif dataset == 'pedestrian_prior':
-            dataset_path_spires = '/home/scur2440/MoTric/Spires'
-            dataset_path_newer = '/home/scur2440/MoTric/NewerCollege'
+            dataset_path_spires = '/home/lbecker/MoTric/datasets/spires'
+            dataset_path_newer = '/home/lbecker/MoTric/datasets/newer'
             file_names = [
                           f'{dataset_path_spires}/2024-03-13-observatory-quarter-01/gt-tum.txt',
                           f'{dataset_path_spires}/2024-03-13-observatory-quarter-02/gt-tum.txt',
                           f'{dataset_path_spires}/2024-05-20-bodleian-library-02/gt-tum.txt',
-                          f'{dataset_path_newer}/collection1/ground_truth/tum_format/gt-nc-quad-easy.csv', 
-                          f'{dataset_path_newer}/collection1/ground_truth/tum_format/gt-nc-quad-medium.csv',
-                          f'{dataset_path_newer}/collection1/ground_truth/tum_format/gt-nc-quad-hard.csv',
-                          f'{dataset_path_newer}/collection1/ground_truth/tum_format/gt-nc-stairs.csv',
-                          f'{dataset_path_newer}/collection2/ground_truth/tum_format/gt-nc-park.csv',
-                          f'{dataset_path_newer}/collection3_maths/ground_truth/tum_format/gt_math_easy.csv',
-                          f'{dataset_path_newer}/collection3_maths/ground_truth/tum_format/gt_math_medium.csv',
-                          f'{dataset_path_newer}/collection3_maths/ground_truth/tum_format/gt_math_hard.csv'
+                          f'{dataset_path_newer}/collection1_newer_college/gt-nc-quad-easy.csv', 
+                          f'{dataset_path_newer}/collection1_newer_college/gt-nc-quad-medium.csv',
+                          f'{dataset_path_newer}/collection1_newer_college/gt-nc-quad-hard.csv',
+                          f'{dataset_path_newer}/collection1_newer_college/gt-nc-stairs.csv',
+                          #f'{dataset_path_newer}/collection2_newer_college/gt-nc-cloister.csv',
+                          f'{dataset_path_newer}/collection2_newer_college/gt-nc-park.csv',
+                          f'{dataset_path_newer}/collection3_maths_institute/gt_math_easy.csv',
+                          f'{dataset_path_newer}/collection3_maths_institute/gt_math_medium.csv',
+                          f'{dataset_path_newer}/collection3_maths_institute/gt_math_hard.csv'
                           ]
 
         ### 0.1 overlapping but not overfitting: split train/val/test by selected trajectories
@@ -91,12 +103,12 @@ class LoadDatasetLeapfrog(Dataset): #3D translation and 3D Lie algebra for rotat
             if dataset == 'kitti':
                 if training == True:
                     indices = ['00', '01', '02', '04', '06', '07', '08']
-                    file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
+                    file_names = [f'/scratch-shared/lbecker/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
                 elif final_eval == True:
-                    file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/05.txt' ]
+                    file_names = [f'/scratch-shared/lbecker/KITTI_odometry_and_depth_no_exclusions/poses/05.txt' ]
                 else: #validation
                     indices = ['03', '09', '10']
-                    file_names = [f'/scratch-shared/scur_2440/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
+                    file_names = [f'/scratch-shared/lbecker/KITTI_odometry_and_depth_no_exclusions/poses/{idx}.txt' for idx in indices]
 
             elif dataset == 'newer':
                 if training == True:
@@ -442,7 +454,8 @@ def load_tum_7d(file_name: str):
     
     with open(file_name, 'r') as f:
         for line in f:
-            if not line.strip():
+            line = line.strip()
+            if not line or line.startswith('#'):
                 continue  # skip empty lines
             parts = line.strip().split()
             if len(parts) < 8:
@@ -740,7 +753,7 @@ def load_one_and_split(dataset, file_name, window_size, input_size, dims, use_re
         times = load_raw_traj_times_kitti(file_name)
 
 
-    elif dataset in ['newer', 'spires', 'pedestrian_prior']:
+    elif dataset in ['newer', 'spires', 'pedestrian_prior', 'tumrgb']:
         if dims == 7:
             poses, times = load_tum_7d(file_name)
         else:

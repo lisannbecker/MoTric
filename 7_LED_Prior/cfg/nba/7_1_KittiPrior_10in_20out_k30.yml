@@ -24,7 +24,7 @@ traj_scale                   : 1
 
 relative                     : False
 normalised                   : False
-overfitting                  : False
+overfitting                  : True
 selected_trajectories        : False
 
 # ------------------- Model -------------------------

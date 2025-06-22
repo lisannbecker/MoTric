@@ -37,6 +37,19 @@ from utils.slam_external import calc_ssim, build_rotation, prune_gaussians, dens
 from diff_gaussian_rasterization import GaussianRasterizer as Renderer
 
 
+### L
+from _rotation_utils import *
+from _prior_integration import PriorIntegration
+from types import SimpleNamespace
+import random
+import gc
+import easydict
+torch.serialization.add_safe_globals([easydict.EasyDict])
+from sklearn.neighbors import NearestNeighbors
+from scipy.special import logsumexp
+
+
+
 def get_dataset(config_dict, basedir, sequence, **kwargs):
     if config_dict["dataset_name"].lower() in ["icl"]:
         return ICLDataset(config_dict, basedir, sequence, **kwargs)
@@ -455,12 +468,10 @@ def convert_params_to_store(params):
 
 
 ### L additions
-
 class CustomKDE:
-	def __init__(self,
-					data: np.ndarray,
-					bandwidth: np.ndarray,
-					range_factor: float = 1.0):
+	def __init__(self, data: np.ndarray,
+				bandwidth: np.ndarray,
+				range_factor: float = 1.0):
 		"""
 		A simple multivariate Gaussian KDE that uses per-dim bandwidth
 		based on data range and sample count.
@@ -529,6 +540,47 @@ class CustomKDE:
 			dens: array of shape (m,)
 		"""
 		return np.exp(self.logpdf(points))
+
+def prior_gradient_logl_custom(kde, pose, epsilon=1e-5):
+    """
+    Numerically approximate the gradient of the log likelihood at pose.
+    Supports both scipy.stats.gaussian_kde and CustomKDE.
+    Args:
+        kde:    either a scipy gaussian_kde or an instance of CustomKDE
+        pose:   1D numpy array of shape (d,)
+        epsilon: finite-difference step
+    Returns:
+        grad: numpy array of shape (d,)
+    """
+    pose = pose.astype(float)
+    d = pose.shape[0]
+    grad = np.zeros(d, dtype=float)
+
+    # helper to get log density
+    def logpdf(x):
+        x = np.atleast_2d(x)
+        if hasattr(kde, 'logpdf'):
+            return kde.logpdf(x)
+        elif hasattr(kde, 'pdf'):
+            # floor the pdf to avoid log(0)
+            p = np.maximum(kde.pdf(x), 1e-12)
+            return np.log(p)
+        else:
+            # scipy.gaussian_kde
+            p = np.maximum(kde(x), 1e-12)
+            return np.log(p)
+
+    base = logpdf(pose)[0]
+    for i in range(d):
+        delta = np.zeros(d, float)
+        delta[i] = epsilon
+
+        lp = logpdf(pose + delta)[0]
+        lm = logpdf(pose - delta)[0]
+
+        grad[i] = (lp - lm) / (2 * epsilon)
+
+    return grad
 
 def filter_outliers(pts, radius=None, min_neighbors=1):
     """
@@ -753,6 +805,42 @@ def correct_with_kde_custom_motion_prior(
 
         return corrected_rot, corrected_tran
 
+def plot_trajectory(gt_w2c_all, cam_rots, cam_trans, out_path_plot):
+    # make sure output directory exists
+    os.makedirs(os.path.dirname(out_path_plot), exist_ok=True)
+
+    T = gt_w2c_all.shape[0]
+    gt_pos = gt_w2c_all[:, :3, 3]
+    gt_xy  = gt_pos[:, [0, 2]]
+    
+    est_pos = []
+    for t in range(T):
+        q = cam_rots[..., t]
+        q = F.normalize(q, dim=0)
+        R = build_rotation(q)
+        tvec = cam_trans[..., t].detach().cpu().numpy().reshape(3)
+        est_pos.append(tvec)
+    est_pos = np.stack(est_pos, 0)
+    est_xy  = est_pos[:, [0, 2]]
+    
+    plt.figure(figsize=(6,6))
+    plt.plot(gt_xy[:,0], gt_xy[:,1],   label="Ground Truth")
+    plt.plot(est_xy[:,0], est_xy[:,1], label="Estimated")
+    plt.axis("equal")
+    plt.xlabel("X (m)")
+    plt.ylabel("Z (m)")
+    plt.title("Top-down Trajectory (X vs Z)")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    
+    # use the passed-in path!
+    plt.savefig(out_path_plot, dpi=200)
+    plt.show()
+
+    print(f"\n=== Trajectory plot saved to {out_path_plot} ===")
+
+
 def rgbd_slam(config: dict):
     # Print Config
     print("Loaded Config:")
@@ -890,27 +978,23 @@ def rgbd_slam(config: dict):
 
     ##### Init prior methods
     progress_bars = False
-    PRIOR_MAIN = "pedestrian_prior" #pedestrian_prior, kitti_prior, tumrgb_prior, None
+
+    PRIOR_MAIN = "tumrgb_prior" #pedestrian_prior, kitti_prior, tumrgb_prior, None
     CORRECTION_TYPE = "KDECustom" # GMM, KDE, KDECustom 
     bandwidth=0.04
-    lambda_step=0.0005
-    vis_steps = 50
+    lambda_step=0.001
     
-    vis_run = True
-    first_10_GT = False
+    end_early = None #int or None
+    first_10_GT = True
 
-
-    if vis_run:
-        pose_trans = []   # will hold [50×3]
-        gt_trans = []   # will hold [50×3]
 
     if PRIOR_MAIN == "pedestrian_prior":
         config_dict = { #TODO get dynamically from config file
-            "checkpoint_path": "models/7_1_PedestrianPrior_10in_10out_k30_best_checkpoint.pth", 
+            "checkpoint_path": "/home/lbecker/MoTric/7_LED_Prior/results/7_1_PedestrianPrior_10in_15out_k30/7_1_PedestrianPrior_10in_15out_k30/models/best_checkpoint_epoch_41.pth", 
             "traj_scale": 1,
             "gradient_scale": 1.0, #use if prior training data has different step size to slam data
             "past_frames": 10,
-            "future_frames": 10,
+            "future_frames": 15,
             "dimensions": 7,
             "k_preds": 30,
             "diffusion": {
@@ -926,8 +1010,8 @@ def rgbd_slam(config: dict):
         }
     elif PRIOR_MAIN == "kitti_prior":
         config_dict = { 
-            # "checkpoint_path": "models/7_1_KittiPrior_10in_10out_k30_EXCL04_best_checkpoint.pth",
-            "checkpoint_path": "/home/scur2440/MoTric/7_LED_Prior/results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_48.pth",
+            "checkpoint_path": "/home/lbecker/MoTric/7_LED_Prior/results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_98.pth",
+            # "checkpoint_path": "/home/lbecker/MoTric/7_LED_Prior/results/7_1_KittiPrior_10in_20out_k30/7_1_KittiPrior_10in_20out_k30_EXCL04/models/best_checkpoint_epoch_27.pth",
             "traj_scale": 1,
             "gradient_scale": 1.0, #use if prior training data has different step size to slam data
             "past_frames": 10,
@@ -947,12 +1031,14 @@ def rgbd_slam(config: dict):
         }
     elif PRIOR_MAIN == "tumrgb_prior":
         config_dict = { 
-            # "checkpoint_path": "models/7_1_KittiPrior_10in_10out_k30_EXCL04_best_checkpoint.pth",
-            "checkpoint_path": "/home/scur2440/MoTric/7_LED_Prior/results/7_1_TUMPrior_10in_20out_k30/7_1_TUMPrior_10in_20out_k30_Overfit/models/best_checkpoint_epoch_50.pth",
+            ###overfit
+            "checkpoint_path": "/home/lbecker/MoTric/7_LED_Prior/results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_Desk1_Overfit/models/best_checkpoint_epoch_57.pth",
+            ###all tum sequence, not overfit
+            # "checkpoint_path": "/home/lbecker/MoTric/7_LED_Prior/results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_All_Sequences/models/best_checkpoint_epoch_34.pth",
             "traj_scale": 1,
             "gradient_scale": 1.0, #use if prior training data has different step size to slam data
             "past_frames": 10,
-            "future_frames": 20,
+            "future_frames": 15,
             "dimensions": 7,
             "k_preds": 30,
             "diffusion": {
@@ -1055,7 +1141,10 @@ def rgbd_slam(config: dict):
 
 
 
-    # Iterate over Scan
+    ### Iterate over Scan
+    if end_early: #for testing
+        num_frames = end_early
+
     for time_idx in tqdm(range(checkpoint_time_idx, num_frames)):
         # Load RGBD frames incrementally instead of all frames
         color, depth, _, gt_pose = dataset[time_idx]
@@ -1065,10 +1154,6 @@ def rgbd_slam(config: dict):
         color = color.permute(2, 0, 1) / 255
         depth = depth.permute(2, 0, 1)
         gt_w2c_all_frames.append(gt_w2c)
-        if vis_run and time_idx < vis_steps:
-            t_gt = gt_w2c[:3, 3].cpu().numpy()      # (3,)
-            gt_trans.append(t_gt)
-            print("Saving pose (GT)")
         curr_gt_w2c = gt_w2c_all_frames
         # Optimize only current time step for tracking
         iter_time_idx = time_idx
@@ -1167,10 +1252,6 @@ def rgbd_slam(config: dict):
                 params['cam_unnorm_rots'][..., time_idx] = candidate_cam_unnorm_rot
                 params['cam_trans'][..., time_idx] = candidate_cam_tran
 
-                if vis_run and time_idx < vis_steps:
-                    pose_trans.append(candidate_cam_tran.cpu().numpy().ravel())
-                    print("Saving pose (SLAM raw)")
-
 
                 if PRIOR_MAIN:
                     ### ============= use GT as first 10 poses (experiment) ================
@@ -1208,10 +1289,7 @@ def rgbd_slam(config: dict):
                         elif CORRECTION_TYPE =="GMM":
                             corrected_rot, corrected_tran, correction_weight = correct_with_gmm_motion_prior(prior_integration, prior_config, params, time_idx, candidate_cam_unnorm_rot, candidate_cam_tran, device, max_correction_weight=0.1)
                         elif CORRECTION_TYPE == "KDECustom":
-                            corrected_rot, corrected_tran = correct_with_kde_custom_motion_prior(prior_integration, prior_config, params, time_idx, candidate_cam_unnorm_rot, candidate_cam_tran, device, bandwidth, lambda_step)
-                            if vis_run and time_idx < vis_steps:
-                                pose_trans.append(corrected_tran.cpu().numpy().ravel())
-                                print("Saving pose (SLAM corrected)")
+                            corrected_rot, corrected_tran = correct_with_kde_custom_motion_prior_translation_only(prior_integration, prior_config, params, time_idx, candidate_cam_unnorm_rot, candidate_cam_tran, device, bandwidth, lambda_step)
 
                         print('Candidate Pose:', torch.cat([candidate_cam_tran, candidate_cam_unnorm_rot],dim=1).detach().cpu().numpy().squeeze(0))
                         print('Corrected Pose:', torch.cat([corrected_tran, corrected_rot],dim=1).detach().cpu().numpy().squeeze(0))
@@ -1233,21 +1311,6 @@ def rgbd_slam(config: dict):
                     #     else:
                     #         original_params_storage['cam_unnorm_rots'][..., time_idx] = candidate_cam_unnorm_rot.clone()
                     #         original_params_storage['cam_trans'][..., time_idx] = candidate_cam_tran.clone()
-                if vis_run and time_idx == vis_steps - 1:
-                    if not PRIOR_MAIN:
-                        suffix = "uncorr"
-                    elif PRIOR_MAIN: 
-                        suffix = "corr"
-                    out_path = os.path.join(eval_dir, f"poses{vis_steps}_{suffix}_tumrgb_customkde.npz")
-
-                    np.savez(
-                        out_path,
-                        slam = np.stack(pose_trans, axis=0),  # (up to vis_steps,3)
-                        gt = np.stack(gt_trans, axis=0)   # (up to vis_steps,3)
-                    )
-                    print(f"Saved {'corrected' if PRIOR_MAIN else 'raw'} poses → {out_path}")
-                    exit()
-
             
         elif time_idx > 0 and config['tracking']['use_gt_poses']:
             with torch.no_grad():
@@ -1459,14 +1522,39 @@ def rgbd_slam(config: dict):
         torch.cuda.empty_cache()
 
 
+
+    
+
+    # ─────────────────────────────────────────────────────────────
     ### Visualisation code TODO make config
-
     print("\n=== Generating Trajectory Visualization ===")
-
     gt_w2c_all = torch.stack(gt_w2c_all_frames, dim=0).cpu().detach().numpy() #(T,4,4)
     cam_rots   = params['cam_unnorm_rots']            # torch tensor (1,4,T)
     cam_trans  = params['cam_trans']                  # torch tensor (1,3,T)
-    plot_trajectory(gt_w2c_all, cam_rots, cam_trans)
+    
+    
+    # Save out the raw & corrected pose‐trans tracks
+    early_stop = str(end_early)+'_' if end_early else ''
+    suffix = f"corr_{bandwidth}b_{lambda_step}l" if PRIOR_MAIN else "uncorr"
+    title = prior_config.checkpoint_path.split('/')[-3] if PRIOR_MAIN else "Baseline" #/home/lbecker/MoTric/7_LED_Prior/results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_Desk1_Overfit/models/best_checkpoint_epoch_57.pth
+    
+    out_path_plot = os.path.join(eval_dir, f"plots/{early_stop}poses_{title}_{suffix}_customkde.png")
+    plot_trajectory(gt_w2c_all, cam_rots, cam_trans, out_path_plot)
+
+    out_path = os.path.join(eval_dir, f"plots/{early_stop}poses_{title}_{suffix}_customkde.npz")
+    rots_np  = cam_rots.squeeze(0).detach().cpu().numpy().T    # (T,4) quaternion [qx,qy,qz,qw]
+    trans_np = cam_trans.squeeze(0).detach().cpu().numpy().T   # (T,3) translation [x,y,z]
+    slam_combined = np.concatenate([rots_np, trans_np], axis=1)  # shape (T,7)
+
+    # 3) save both SLAM and ground‐truth
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    np.savez(
+        out_path,
+        slam = slam_combined,
+        gt   = gt_w2c_all
+    )
+    print(f"Saved {'corrected' if PRIOR_MAIN else 'raw'} poses → {out_path}")
+    # ─────────────────────────────────────────────────────────────
 
     
     # Convert gt_w2c_all_frames to numpy if it's not already

@@ -24,6 +24,7 @@ normalised                   : False
 overfitting                  : False
 selected_trajectories        : False
 
+
 # ------------------- Model -------------------------
 pretrained_core_denoising_model: './results/checkpoints/base_diffusion_model.p'
 debug                        : False # set to True for early stop in each epoch.
@@ -36,10 +37,10 @@ diffusion                    : {
 }
 
 # ------------------- Training Parameters -------------------------
-lr                           : 1.e-4 #tenth of previous
-train_batch_size             : 128
-test_batch_size              : 128 #slows testing down a bit compared to default 500
-num_epochs                   : 80
+lr                           : 1.e-3 
+train_batch_size             : 64
+test_batch_size              : 64 #slows testing down a bit compared to default 500
+num_epochs                   : 100
 test_interval                : 1  # Added: evaluate every N epochs
 lr_scheduler                 : 'step'
 decay_step                   : 8
