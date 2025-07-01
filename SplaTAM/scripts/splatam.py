@@ -23,7 +23,7 @@ import wandb
 
 from datasets.gradslam_datasets import (load_dataset_config, ICLDataset, ReplicaDataset, ReplicaV2Dataset, AzureKinectDataset,
                                         ScannetDataset, Ai2thorDataset, Record3DDataset, RealsenseDataset, TUMDataset,
-                                        ScannetPPDataset, NeRFCaptureDataset)
+                                        ScannetPPDataset, NeRFCaptureDataset, KittiDataset)
 from utils.common_utils import seed_everything, save_params_ckpt, save_params
 from utils.eval_helpers import report_loss, report_progress, eval
 from utils.keyframe_selection import keyframe_selection_overlap
@@ -73,6 +73,8 @@ def get_dataset(config_dict, basedir, sequence, **kwargs):
         return ScannetPPDataset(basedir, sequence, **kwargs)
     elif config_dict["dataset_name"].lower() in ["nerfcapture"]:
         return NeRFCaptureDataset(basedir, sequence, **kwargs)
+    elif config_dict["dataset_name"].lower() in ["kitti"]:
+        return KittiDataset(config_dict, basedir, sequence, **kwargs)
     else:
         raise ValueError(f"Unknown dataset name {config_dict['dataset_name']}")
 
@@ -811,7 +813,7 @@ def plot_trajectory(gt_w2c_all, cam_rots, cam_trans, out_path_plot):
 
     T = gt_w2c_all.shape[0]
     gt_pos = gt_w2c_all[:, :3, 3]
-    gt_xy  = gt_pos[:, [0, 2]]
+    gt_xy  = gt_pos[:, [0, 1]]
     
     est_pos = []
     for t in range(T):
@@ -821,14 +823,14 @@ def plot_trajectory(gt_w2c_all, cam_rots, cam_trans, out_path_plot):
         tvec = cam_trans[..., t].detach().cpu().numpy().reshape(3)
         est_pos.append(tvec)
     est_pos = np.stack(est_pos, 0)
-    est_xy  = est_pos[:, [0, 2]]
+    est_xy  = est_pos[:, [0, 1]]
     
     plt.figure(figsize=(6,6))
     plt.plot(gt_xy[:,0], gt_xy[:,1],   label="Ground Truth")
     plt.plot(est_xy[:,0], est_xy[:,1], label="Estimated")
     plt.axis("equal")
     plt.xlabel("X (m)")
-    plt.ylabel("Z (m)")
+    plt.ylabel("Y (m)")
     plt.title("Top-down Trajectory (X vs Z)")
     plt.grid(True)
     plt.legend()
@@ -979,13 +981,13 @@ def rgbd_slam(config: dict):
     ##### Init prior methods
     progress_bars = False
 
-    PRIOR_MAIN = "tumrgb_prior" #pedestrian_prior, kitti_prior, tumrgb_prior, None
+    PRIOR_MAIN = None #pedestrian_prior, kitti_prior, tumrgb_prior, None
     CORRECTION_TYPE = "KDECustom" # GMM, KDE, KDECustom 
-    bandwidth=0.04
-    lambda_step=0.001
+    bandwidth=0.15
+    lambda_step=0.005
     
     end_early = None #int or None
-    first_10_GT = True
+    first_10_GT = False
 
 
     if PRIOR_MAIN == "pedestrian_prior":
@@ -1267,7 +1269,6 @@ def rgbd_slam(config: dict):
                         params['cam_trans'][..., time_idx] = gt_tran
                         params['cam_unnorm_rots'][..., time_idx] = gt_quat
                         print(f'Overwriting SLAM pose with GT for time_idx {time_idx}')
-                        continue
                     ### ===================================================================
 
                     ###motion prior implementation - uses past 10 poses #make config TODO
@@ -1535,15 +1536,16 @@ def rgbd_slam(config: dict):
     
     # Save out the raw & corrected pose‐trans tracks
     early_stop = str(end_early)+'_' if end_early else ''
+    gt_used = str(first_10_GT)+'_' if first_10_GT else ''
     suffix = f"corr_{bandwidth}b_{lambda_step}l" if PRIOR_MAIN else "uncorr"
     title = prior_config.checkpoint_path.split('/')[-3] if PRIOR_MAIN else "Baseline" #/home/lbecker/MoTric/7_LED_Prior/results/7_2_TUMRGBPrior_10in_15out_k30/7_2_TUMRGBPrior_10in_15out_k30_Desk1_Overfit/models/best_checkpoint_epoch_57.pth
     
-    out_path_plot = os.path.join(eval_dir, f"plots/{early_stop}poses_{title}_{suffix}_customkde.png")
+    out_path_plot = os.path.join(eval_dir, f"plots/{early_stop}{gt_used}poses_{title}_{suffix}_customkde.png")
     plot_trajectory(gt_w2c_all, cam_rots, cam_trans, out_path_plot)
 
-    out_path = os.path.join(eval_dir, f"plots/{early_stop}poses_{title}_{suffix}_customkde.npz")
-    rots_np  = cam_rots.squeeze(0).detach().cpu().numpy().T    # (T,4) quaternion [qx,qy,qz,qw]
-    trans_np = cam_trans.squeeze(0).detach().cpu().numpy().T   # (T,3) translation [x,y,z]
+    out_path = os.path.join(eval_dir, f"plots/{early_stop}{gt_used}poses_{title}_{suffix}_customkde.npz")
+    rots_np  = cam_rots.squeeze(0).detach().cpu().numpy().T # (T,4) quaternion [qx,qy,qz,qw]
+    trans_np = cam_trans.squeeze(0).detach().cpu().numpy().T # (T,3) translation [x,y,z]
     slam_combined = np.concatenate([rots_np, trans_np], axis=1)  # shape (T,7)
 
     # 3) save both SLAM and ground‐truth
